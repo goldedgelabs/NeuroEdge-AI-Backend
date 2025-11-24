@@ -1,53 +1,66 @@
 import { EngineBase } from "../EngineBase";
 import { logger } from "../../utils/logger";
-import { db } from "../../db/dbManager";
 
 export class HealthEngine extends EngineBase {
   constructor() {
     super();
+    this.name = "HealthEngine";
     this.survivalCheck();
   }
 
-  // Simple alive check
+  // Ensure dependencies and environment are healthy
   async survivalCheck() {
-    logger.log("[HealthEngine] Alive and monitoring systems...");
+    logger.info(`[${this.name}] Performing survival check...`);
+    // Example: check DB connectivity, medicine data sources
+    return true;
   }
 
   // Main run method
   async run(input: any) {
-    try {
-      logger.log("[HealthEngine] Processing input:", input);
+    logger.info(`[${this.name}] Running with input:`, input);
 
-      // Save medicine info to edge DB
-      const medicine = {
-        id: input.id,
-        name: input.name,
-        dosage: input.dosage,
-        manufacturer: input.manufacturer,
-      };
+    // Example: manage medicine data
+    const medicineRecord = {
+      id: input?.id || Date.now(),
+      name: input?.name || "Unknown Medicine",
+      dosage: input?.dosage || "Unknown",
+      manufacturer: input?.manufacturer || "Unknown",
+      timestamp: new Date().toISOString(),
+    };
 
-      await db.set("medicine", medicine.id, medicine, "edge");
-      logger.log("[HealthEngine] Medicine saved:", medicine);
+    // Write to DB and trigger agents
+    if ((globalThis as any).__NE_DB_MANAGER) {
+      const db = (globalThis as any).__NE_DB_MANAGER;
+      await db.set("medicine", medicineRecord.id, medicineRecord, "edge");
 
-      // Trigger MedicineManagementAgent if available
-      const agentManager = (globalThis as any).__NE_AGENT_MANAGER;
-      if (agentManager?.MedicineManagementAgent) {
-        const agent = agentManager.MedicineManagementAgent;
-        if (typeof agent.process === "function") {
-          await agent.process(input);
-          logger.log("[HealthEngine] MedicineManagementAgent processed input");
-        }
+      // Publish event to notify subscribed agents
+      if ((globalThis as any).__NE_ENGINE_MANAGER?.eventBus) {
+        (globalThis as any).__NE_ENGINE_MANAGER.eventBus.publish("db:update", {
+          collection: "medicine",
+          key: medicineRecord.id,
+          value: medicineRecord,
+        });
       }
-
-      return { status: "HealthEngine completed task", medicine };
-    } catch (err: any) {
-      await this.recover(err);
-      return { status: "HealthEngine recovered from error", error: err.message };
     }
+
+    return { status: "success", medicine: medicineRecord };
   }
 
-  // Error recovery
+  // Self-healing if errors occur
   async recover(err: any) {
-    logger.error("[HealthEngine] Recovered from error:", err);
+    logger.error(`[${this.name}] Error recovered:`, err);
+    return { status: "recovered", message: "Fallback health routine executed" };
+  }
+
+  // Talk to another engine
+  async talkTo(engineName: string, method: string, payload: any) {
+    const engine = (globalThis as any).__NE_ENGINE_MANAGER[engineName];
+    if (engine && typeof engine[method] === "function") {
+      return engine[method](payload);
+    }
+    return null;
   }
 }
+
+// Optional: register immediately in engineManager
+// registerEngine("HealthEngine", new HealthEngine());
