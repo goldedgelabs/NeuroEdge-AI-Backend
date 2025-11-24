@@ -1,15 +1,3 @@
-// src/core/engineManager.ts
-/**
- * NeuroEdge Engine Manager
- * -----------------------
- * Central registry for all engines
- * Provides:
- *  - Doctrine enforcement
- *  - Self-healing
- *  - Inter-engine communication
- *  - runEngineChain helper
- */
-
 import { DoctrineEngine } from "../engines/DoctrineEngine/index";
 
 // Import all engines
@@ -34,21 +22,16 @@ import { PersonaEngine } from "../engines/PersonaEngine/index";
 import { CreativityEngine } from "../engines/CreativityEngine/index";
 import { OrchestrationEngine } from "../engines/OrchestrationEngine/index";
 import { SearchEngine } from "../engines/SearchEngine/index";
-
-// New 3 engines
+import { MedicineEngine } from "../engines/MedicineEngine/index";
 import { PhoneSecurityEngine } from "../engines/PhoneSecurityEngine/index";
-import { MedicineManagementEngine } from "../engines/MedicineManagementEngine/index";
 import { GoldEdgeIntegrationEngine } from "../engines/GoldEdgeIntegrationEngine/index";
 
 export const engineManager: Record<string, any> = {};
 const doctrine = new DoctrineEngine();
 
-// Global reference for engines to access manager
+// global reference
 (globalThis as any).__NE_ENGINE_MANAGER = engineManager;
 
-// -----------------------------
-// Register Engines with Doctrine enforcement & self-healing
-// -----------------------------
 export function registerEngine(name: string, engineInstance: any) {
   engineManager[name] = new Proxy(engineInstance, {
     get(target: any, prop: string) {
@@ -60,8 +43,8 @@ export function registerEngine(name: string, engineInstance: any) {
           const userRole = args[0]?.role || "user";
 
           let doctrineResult = { success: true };
-          if (doctrine && typeof (doctrine as any).enforceAction === "function") {
-            doctrineResult = await (doctrine as any).enforceAction(action, folderArg, userRole);
+          if (doctrine && typeof doctrine.enforceAction === "function") {
+            doctrineResult = await doctrine.enforceAction(action, folderArg, userRole);
           }
 
           if (!doctrineResult.success) {
@@ -80,12 +63,12 @@ export function registerEngine(name: string, engineInstance: any) {
         };
       }
       return origMethod;
-    }
+    },
   });
 }
 
 // -----------------------------
-// Event Bus
+// Event bus
 // -----------------------------
 export const eventBus: Record<string, Function[]> = {};
 export function subscribe(channel: string, callback: Function) {
@@ -94,7 +77,7 @@ export function subscribe(channel: string, callback: Function) {
 }
 export function publish(channel: string, data: any) {
   const subscribers = eventBus[channel] || [];
-  subscribers.forEach(cb => cb(data));
+  subscribers.forEach((cb) => cb(data));
 }
 
 // -----------------------------
@@ -117,38 +100,30 @@ export async function runEngineChain(chain: { engine: string; input?: any }[]) {
 }
 
 // -----------------------------
-// Register all engines
+// Register engines
 // -----------------------------
-const allEngines = [
-  SelfImprovementEngine,
-  PredictiveEngine,
-  CodeEngine,
-  VoiceEngine,
-  VisionEngine,
-  ReinforcementEngine,
-  DataIngestEngine,
-  AnalyticsEngine,
-  PlannerEngine,
-  MemoryEngine,
-  ConversationEngine,
-  SchedulingEngine,
-  RecommendationEngine,
-  SecurityEngine,
-  MonitoringEngine,
-  TranslationEngine,
-  SummarizationEngine,
-  PersonaEngine,
-  CreativityEngine,
-  OrchestrationEngine,
-  SearchEngine,
-  PhoneSecurityEngine,
-  MedicineManagementEngine,
-  GoldEdgeIntegrationEngine
-];
-
-allEngines.forEach((EngineClass) =>
-  registerEngine(EngineClass.name, new EngineClass())
-);
-
-// Doctrine itself is also registered
+registerEngine("SelfImprovementEngine", new SelfImprovementEngine());
+registerEngine("PredictiveEngine", new PredictiveEngine());
+registerEngine("CodeEngine", new CodeEngine());
+registerEngine("VoiceEngine", new VoiceEngine());
+registerEngine("VisionEngine", new VisionEngine());
+registerEngine("ReinforcementEngine", new ReinforcementEngine());
+registerEngine("DataIngestEngine", new DataIngestEngine());
+registerEngine("AnalyticsEngine", new AnalyticsEngine());
+registerEngine("PlannerEngine", new PlannerEngine());
+registerEngine("MemoryEngine", new MemoryEngine());
+registerEngine("ConversationEngine", new ConversationEngine());
+registerEngine("SchedulingEngine", new SchedulingEngine());
+registerEngine("RecommendationEngine", new RecommendationEngine());
+registerEngine("SecurityEngine", new SecurityEngine());
+registerEngine("MonitoringEngine", new MonitoringEngine());
+registerEngine("TranslationEngine", new TranslationEngine());
+registerEngine("SummarizationEngine", new SummarizationEngine());
+registerEngine("PersonaEngine", new PersonaEngine());
+registerEngine("CreativityEngine", new CreativityEngine());
+registerEngine("OrchestrationEngine", new OrchestrationEngine());
+registerEngine("SearchEngine", new SearchEngine());
+registerEngine("MedicineEngine", new MedicineEngine());
+registerEngine("PhoneSecurityEngine", new PhoneSecurityEngine());
+registerEngine("GoldEdgeIntegrationEngine", new GoldEdgeIntegrationEngine());
 registerEngine("DoctrineEngine", doctrine);
