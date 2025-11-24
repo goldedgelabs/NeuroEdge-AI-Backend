@@ -12,7 +12,7 @@
 
 import { DoctrineEngine } from "../engines/DoctrineEngine/index";
 
-// Import all engines (25 total)
+// Import all engines (25+)
 import { SelfImprovementEngine } from "../engines/SelfImprovementEngine/index";
 import { PredictiveEngine } from "../engines/PredictiveEngine/index";
 import { CodeEngine } from "../engines/CodeEngine/index";
@@ -50,6 +50,11 @@ const doctrine = new DoctrineEngine();
 // Register Engines with Doctrine enforcement & self-healing
 // -----------------------------
 export function registerEngine(name: string, engineInstance: any) {
+  if (engineManager[name]) {
+    console.warn(`[EngineManager] Engine already registered: ${name}`);
+    return;
+  }
+
   engineManager[name] = new Proxy(engineInstance, {
     get(target: any, prop: string) {
       const origMethod = target[prop];
@@ -119,17 +124,15 @@ export async function runEngineChain(chain: { engine: string; input?: any }[]) {
 }
 
 // -----------------------------
-// Register all 25 engines
-// -----------------------------
+// Register all engines (old + new)
 const allEngines = [
   SelfImprovementEngine, PredictiveEngine, CodeEngine, VoiceEngine, VisionEngine,
   ReinforcementEngine, DataIngestEngine, AnalyticsEngine, PlannerEngine, MemoryEngine,
   ConversationEngine, SchedulingEngine, RecommendationEngine, SecurityEngine, MonitoringEngine,
   TranslationEngine, SummarizationEngine, PersonaEngine, CreativityEngine, OrchestrationEngine,
-  SearchEngine, HealthEngine, DeviceProtectionEngine, GoldEdgeIntegrationEngine, DoctrineEngine
+  SearchEngine, HealthEngine, DeviceProtectionEngine, GoldEdgeIntegrationEngine
 ];
 
 allEngines.forEach(EngineClass => {
-  const name = EngineClass.name;
-  registerEngine(name, new EngineClass());
+  registerEngine(EngineClass.name, new EngineClass());
 });
