@@ -1,27 +1,79 @@
-// src/engines/SimulationEngine/index.ts
 import { EngineBase } from "../EngineBase";
-import { memoryDB } from "../db/hybridDB";
+import { logger } from "../../utils/logger";
 
 export class SimulationEngine extends EngineBase {
-    name = "SimulationEngine";
+  constructor() {
+    super();
+    this.name = "SimulationEngine";
+    this.survivalCheck();
+  }
 
-    constructor() {
-        super();
+  async survivalCheck() {
+    logger.info(`[${this.name}] Performing survival check...`);
+    // Ensure simulation environment is ready
+    return true;
+  }
+
+  /**
+   * run function
+   * @param input - { scenario: string, parameters: any }
+   */
+  async run(input: { scenario: string; parameters: any }) {
+    logger.info(`[${this.name}] Running simulation for scenario:`, input.scenario);
+
+    let result;
+    switch (input.scenario) {
+      case "market":
+        result = await this.simulateMarket(input.parameters);
+        break;
+      case "health":
+        result = await this.simulateHealth(input.parameters);
+        break;
+      case "operations":
+        result = await this.simulateOperations(input.parameters);
+        break;
+      default:
+        result = { status: "unknown", message: "Scenario not recognized" };
     }
 
-    async predictOutcome(actionPlan: any) {
-        // Simulate consequences using current memory, data, and reasoning
-        // Could call ReasoningEngine or AnalyticsEngine
-        const simulationResult = {
-            plan: actionPlan,
-            predictedImpact: Math.random() * 100, // placeholder scoring
-            risks: ["minor risk"], // placeholder
-            recommendedActions: ["review plan"]
-        };
+    return {
+      scenario: input.scenario,
+      result,
+      timestamp: new Date().toISOString(),
+    };
+  }
 
-        // Save outcome to memory DB
-        memoryDB.upsert?.({ key: `simulation_${Date.now()}`, value: simulationResult });
+  async simulateMarket(params: any) {
+    logger.info(`[${this.name}] Simulating market with:`, params);
+    // Add complex simulation logic here
+    return { predictedRevenue: Math.random() * 100000 };
+  }
 
-        return simulationResult;
+  async simulateHealth(params: any) {
+    logger.info(`[${this.name}] Simulating health scenario with:`, params);
+    // Example: medicine distribution or patient outcomes
+    return { recoveryRate: Math.random() };
+  }
+
+  async simulateOperations(params: any) {
+    logger.info(`[${this.name}] Simulating operations with:`, params);
+    // Example: workflow optimization
+    return { efficiencyGain: Math.random() * 50 };
+  }
+
+  async recover(err: any) {
+    logger.error(`[${this.name}] Error recovered:`, err);
+    return { status: "recovered", message: "SimulationEngine recovered" };
+  }
+
+  async talkTo(engineName: string, method: string, payload: any) {
+    const engine = (globalThis as any).__NE_ENGINE_MANAGER[engineName];
+    if (engine && typeof engine[method] === "function") {
+      return engine[method](payload);
     }
+    return null;
+  }
 }
+
+// Optional: register immediately
+// registerEngine("SimulationEngine", new SimulationEngine());
