@@ -1,39 +1,34 @@
-import {{ EngineBase }} from "../EngineBase";
-import {{ logger }} from "../../utils/logger";
-import {{ survivalCheck }} from "./survival_check";
+import { EngineBase } from "../EngineBase";
 
-export class CreativityEngine extends EngineBase {{
-  name = "CreativityEngine";
+export class CreativityEngine extends EngineBase {
+  constructor() {
+    super("CreativityEngine");
+  }
 
-  constructor() {{
-    super();
-    try {{
-      const status = (typeof survivalCheck === "function") ? survivalCheck() : {{ online: true }};
-      if (status && typeof status.then === "function") {{
-        status.then((s: any) => {{
-          if (!s?.online) logger.warn(`[${{this.name}}] Offline mode activated`);
-        }}).catch((e:any)=>{{ logger.warn(`[${{this.name}}] survivalCheck error`, e); }});
-      }} else {{
-        if (!status?.online) logger.warn(`[${{this.name}}] Offline mode activated`);
-      }}
-    }} catch (err) {{
-      logger.warn(`[${{this.name}}] survival check failed`, err);
-    }}
-    logger.log(`[${{this.name}}] Initialized`);
-  }}
+  async run(input: any) {
+    console.log(`[CreativityEngine] Generating creative output for input:`, input);
 
-  // talkTo uses a global engineManager set by core/engineManager
-  async talkTo(engineName: string, method: string, payload: any) {{
-    const mgr = (globalThis as any).__NE_ENGINE_MANAGER;
-    if (!mgr) throw new Error("engineManager not initialized");
-    const engine = mgr[engineName];
-    if (!engine) throw new Error(`Engine ${{engineName}} not found`);
-    if (typeof engine[method] !== "function") throw new Error(`Method ${{method}} not found in ${{engineName}}`);
-    return await engine[method](payload);
-  }}
+    // Example logic: combine text, ideas, or media
+    const prompt = input?.prompt || "Default creative task";
+    const style = input?.style || "innovative";
 
-  async run(input: any) {{
-    logger.info(`[${{this.name}}] run called`);
-    return {{ engine: this.name, input }};
-  }}
-}}
+    // Placeholder for actual creativity algorithms
+    const output = {
+      prompt,
+      style,
+      result: `Creative content generated for '${prompt}' in style '${style}'`
+    };
+
+    return output;
+  }
+
+  async handleDBUpdate(event: any) {
+    console.log(`[CreativityEngine] DB Update event received:`, event);
+    // Optional: respond to new creative resources or data
+  }
+
+  async handleDBDelete(event: any) {
+    console.log(`[CreativityEngine] DB Delete event received:`, event);
+    // Optional: clean up cached creative outputs
+  }
+}
