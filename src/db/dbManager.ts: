@@ -1,0 +1,58 @@
+import * as edgeLogs from "./edgeDB/models/logs";
+import * as edgeAnalytics from "./edgeDB/models/analytics";
+import * as edgeMedicine from "./edgeDB/models/medicine";
+import * as edgeUserData from "./edgeDB/models/userData";
+
+import * as sharedSubscriptions from "./sharedDB/models/subscriptions";
+import * as sharedMedicine from "./sharedDB/models/medicine";
+import * as sharedUsers from "./sharedDB/models/users";
+import * as sharedGlobal from "./sharedDB/models/globalData";
+
+import { eventBus } from "../core/engineManager";
+
+// Simple DB interface with Doctrine enforcement hook
+export const db = {
+  edge: {
+    logs: edgeLogs.LogsModel,
+    analytics: edgeAnalytics.AnalyticsModel,
+    medicine: edgeMedicine.MedicineModel,
+    users: edgeUserData.UserDataModel
+  },
+  shared: {
+    subscriptions: sharedSubscriptions.SubscriptionsModel,
+    medicine: sharedMedicine.SharedMedicineModel,
+    users: sharedUsers.UsersModel,
+    global: sharedGlobal.GlobalDataModel
+  },
+
+  async set(collection: string, key: string, value: any, source: "edge" | "shared" = "edge") {
+    const target = source === "edge" ? this.edge : this.shared;
+    if (!target[collection]) throw new Error(`Collection not found: ${collection}`);
+
+    target[collection][key] = { ...value, updatedAt: Date.now() };
+    // Notify all subscribers
+    eventBus["db:update"]?.forEach(cb => cb({ collection, key, value: target[collection][key] }));
+    return target[collection][key];
+  },
+
+  async get(collection: string, key: string, source: "edge" | "shared" = "edge") {
+    const target = source === "edge" ? this.edge : this.shared;
+    if (!target[collection]) throw new Error(`Collection not found: ${collection}`);
+    return target[collection][key] ?? null;
+  },
+
+  async delete(collection: string, key: string, source: "edge" | "shared" = "edge") {
+    const target = source === "edge" ? this.edge : this.shared;
+    if (!target[collection]) throw new Error(`Collection not found: ${collection}`);
+    const deleted = target[collection][key];
+    delete target[collection][key];
+    eventBus["db:delete"]?.forEach(cb => cb({ collection, key }));
+    return deleted;
+  },
+
+  async getAll(collection: string, source: "edge" | "shared" = "edge") {
+    const target = source === "edge" ? this.edge : this.shared;
+    if (!target[collection]) throw new Error(`Collection not found: ${collection}`);
+    return Object.values(target[collection]);
+  }
+};
