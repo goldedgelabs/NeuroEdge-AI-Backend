@@ -95,7 +95,21 @@ import { PhoneSecurityAgent } from "./agents/PhoneSecurityAgent";
 import { MedicineManagementAgent } from "./agents/MedicineManagementAgent";
 import { GoldEdgeIntegrationAgent } from "./agents/GoldEdgeIntegrationAgent";
 import { SelfProtectionAgent } from "./agents/SelfProtectionAgent";
+// src/index.ts (or bootstrap.ts)
+import { wireEnginesToAgents } from "./core/engineAgentConnector";
+import { runEngineChain } from "./core/engineManager";
 
+wireEnginesToAgents();
+
+// Example run
+(async () => {
+  const result = await runEngineChain([
+    { engine: "PlannerEngine", input: { goal: "Plan NeuroEdge rollout" } },
+    { engine: "AnalyticsEngine", input: { data: [1,2,3] } },
+  ]);
+
+  console.log("Engine chain result:", result);
+})();
 // Database
 import { LocalDB } from "./database/local/LocalDB";
 import { DistributedDB } from "./database/distributed/DistributedDB";
