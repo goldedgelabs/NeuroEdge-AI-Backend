@@ -1,29 +1,54 @@
-// src/engines/ReasoningEngine/index.ts
 import { EngineBase } from "../EngineBase";
-import { survivalCheck } from "./survival_check";
-import { analyzeThoughts } from "./reasoning_core";
 import { logger } from "../../utils/logger";
 
 export class ReasoningEngine extends EngineBase {
-    name = "ReasoningEngine";
+  constructor() {
+    super();
+    this.name = "ReasoningEngine";
+    this.survivalCheck();
+  }
 
-    constructor() {
-        super();
-        logger.log(`[${this.name}] Initialized`);
-        this.init();
-    }
+  async survivalCheck() {
+    logger.info(`[${this.name}] Performing survival check...`);
+    // Check reasoning models, dependencies
+    return true;
+  }
 
-    private init() {
-        const status = survivalCheck();
-        if (!status.online) {
-            logger.warn(`[${this.name}] Offline mode activated`);
-        }
-    }
+  /**
+   * run function
+   * @param input - { query: string, context?: any }
+   */
+  async run(input: { query: string; context?: any }) {
+    logger.info(`[${this.name}] Reasoning on input:`, input.query);
 
-    run(input: any) {
-        // input: { task, context, predictions? }
-        logger.log(`[${this.name}] Running reasoning on input:`, input);
-        const reasoningSteps = analyzeThoughts(input);
-        return { output: "Reasoned result", reasoningSteps };
+    // Mock reasoning logic
+    const reasoningResult = {
+      query: input.query,
+      conclusion: "This is a sample conclusion based on reasoning logic.",
+      steps: [
+        "Step 1: Analyze input",
+        "Step 2: Apply rules and knowledge",
+        "Step 3: Derive conclusion",
+      ],
+      timestamp: new Date().toISOString(),
+    };
+
+    return reasoningResult;
+  }
+
+  async recover(err: any) {
+    logger.error(`[${this.name}] Error recovered:`, err);
+    return { status: "recovered", message: "ReasoningEngine recovered" };
+  }
+
+  async talkTo(engineName: string, method: string, payload: any) {
+    const engine = (globalThis as any).__NE_ENGINE_MANAGER[engineName];
+    if (engine && typeof engine[method] === "function") {
+      return engine[method](payload);
     }
+    return null;
+  }
 }
+
+// Optional: register immediately
+// registerEngine("ReasoningEngine", new ReasoningEngine());
