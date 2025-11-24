@@ -1,5 +1,6 @@
 import { EngineBase } from "../EngineBase";
 import { logger } from "../../utils/logger";
+import { eventBus } from "../../core/engineManager";
 
 export class GoldEdgeIntegrationEngine extends EngineBase {
   constructor() {
@@ -7,20 +8,18 @@ export class GoldEdgeIntegrationEngine extends EngineBase {
     this.survivalCheck();
   }
 
-  async survivalCheck() {
-    logger.log("GoldEdgeIntegrationEngine active: ready to integrate apps...");
+  survivalCheck() {
+    logger.info("GoldEdgeIntegrationEngine survival check OK");
   }
 
-  async run(input: any) {
-    logger.log("GoldEdgeIntegrationEngine processing input:", input);
-    const agentManager = (globalThis as any).__NE_AGENT_MANAGER;
-    if (agentManager?.GoldEdgeIntegrationAgent) {
-      await agentManager.GoldEdgeIntegrationAgent.integrate(input);
-    }
-    return { status: "GoldEdgeIntegrationEngine completed task" };
+  async run(input?: any) {
+    logger.log("GoldEdgeIntegrationEngine running with input:", input);
+    // Example: integrate with GoldEdge Browser, other apps
+    eventBus["GoldEdgeIntegration"]?.forEach(cb => cb(input));
+    return { success: true, action: "GoldEdgeAppsSynced" };
   }
 
   async recover(err: any) {
-    logger.error("GoldEdgeIntegrationEngine recovered from error:", err);
+    logger.warn("GoldEdgeIntegrationEngine recovered from error:", err);
   }
 }
