@@ -12,7 +12,7 @@
 
 import { DoctrineEngine } from "../engines/DoctrineEngine/index";
 
-// Import all 25 engines
+// Import all engines (25 total)
 import { SelfImprovementEngine } from "../engines/SelfImprovementEngine/index";
 import { PredictiveEngine } from "../engines/PredictiveEngine/index";
 import { CodeEngine } from "../engines/CodeEngine/index";
@@ -35,7 +35,7 @@ import { CreativityEngine } from "../engines/CreativityEngine/index";
 import { OrchestrationEngine } from "../engines/OrchestrationEngine/index";
 import { SearchEngine } from "../engines/SearchEngine/index";
 
-// --- NEW ENGINES ---
+// New engines
 import { HealthEngine } from "../engines/HealthEngine/index";
 import { DeviceProtectionEngine } from "../engines/DeviceProtectionEngine/index";
 import { GoldEdgeIntegrationEngine } from "../engines/GoldEdgeIntegrationEngine/index";
@@ -121,31 +121,15 @@ export async function runEngineChain(chain: { engine: string; input?: any }[]) {
 // -----------------------------
 // Register all 25 engines
 // -----------------------------
-registerEngine("SelfImprovementEngine", new SelfImprovementEngine());
-registerEngine("PredictiveEngine", new PredictiveEngine());
-registerEngine("CodeEngine", new CodeEngine());
-registerEngine("VoiceEngine", new VoiceEngine());
-registerEngine("VisionEngine", new VisionEngine());
-registerEngine("ReinforcementEngine", new ReinforcementEngine());
-registerEngine("DataIngestEngine", new DataIngestEngine());
-registerEngine("AnalyticsEngine", new AnalyticsEngine());
-registerEngine("PlannerEngine", new PlannerEngine());
-registerEngine("MemoryEngine", new MemoryEngine());
-registerEngine("ConversationEngine", new ConversationEngine());
-registerEngine("SchedulingEngine", new SchedulingEngine());
-registerEngine("RecommendationEngine", new RecommendationEngine());
-registerEngine("SecurityEngine", new SecurityEngine());
-registerEngine("MonitoringEngine", new MonitoringEngine());
-registerEngine("TranslationEngine", new TranslationEngine());
-registerEngine("SummarizationEngine", new SummarizationEngine());
-registerEngine("PersonaEngine", new PersonaEngine());
-registerEngine("CreativityEngine", new CreativityEngine());
-registerEngine("OrchestrationEngine", new OrchestrationEngine());
-registerEngine("SearchEngine", new SearchEngine());
+const allEngines = [
+  SelfImprovementEngine, PredictiveEngine, CodeEngine, VoiceEngine, VisionEngine,
+  ReinforcementEngine, DataIngestEngine, AnalyticsEngine, PlannerEngine, MemoryEngine,
+  ConversationEngine, SchedulingEngine, RecommendationEngine, SecurityEngine, MonitoringEngine,
+  TranslationEngine, SummarizationEngine, PersonaEngine, CreativityEngine, OrchestrationEngine,
+  SearchEngine, HealthEngine, DeviceProtectionEngine, GoldEdgeIntegrationEngine, DoctrineEngine
+];
 
-// --- NEW ---
-registerEngine("HealthEngine", new HealthEngine());
-registerEngine("DeviceProtectionEngine", new DeviceProtectionEngine());
-registerEngine("GoldEdgeIntegrationEngine", new GoldEdgeIntegrationEngine());
-
-registerEngine("DoctrineEngine", doctrine);
+allEngines.forEach(EngineClass => {
+  const name = EngineClass.name;
+  registerEngine(name, new EngineClass());
+});
