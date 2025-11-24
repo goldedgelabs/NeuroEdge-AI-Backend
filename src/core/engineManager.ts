@@ -1,5 +1,18 @@
+// src/core/engineManager.ts
+/**
+ * NeuroEdge Engine Manager
+ * -----------------------
+ * Central registry for all engines
+ * Provides:
+ *  - Doctrine enforcement
+ *  - Self-healing
+ *  - Inter-engine communication
+ *  - runEngineChain helper
+ */
+
 import { DoctrineEngine } from "../engines/DoctrineEngine/index";
-// Import engines
+
+// Import all 22 engines
 import { SelfImprovementEngine } from "../engines/SelfImprovementEngine/index";
 import { PredictiveEngine } from "../engines/PredictiveEngine/index";
 import { CodeEngine } from "../engines/CodeEngine/index";
@@ -21,15 +34,16 @@ import { PersonaEngine } from "../engines/PersonaEngine/index";
 import { CreativityEngine } from "../engines/CreativityEngine/index";
 import { OrchestrationEngine } from "../engines/OrchestrationEngine/index";
 import { SearchEngine } from "../engines/SearchEngine/index";
-import { DoctrineEngine } from "../engines/DoctrineEngine/index";
 
 export const engineManager: Record<string, any> = {};
 const doctrine = new DoctrineEngine();
 
-// set global ref for engines to use (avoids circular import issues)
+// Global reference for engines to access manager
 (globalThis as any).__NE_ENGINE_MANAGER = engineManager;
 
-// register function with doctrine enforcement and self-healing
+// -----------------------------
+// Register Engines with Doctrine enforcement & self-healing
+// -----------------------------
 export function registerEngine(name: string, engineInstance: any) {
   engineManager[name] = new Proxy(engineInstance, {
     get(target: any, prop: string) {
@@ -40,6 +54,7 @@ export function registerEngine(name: string, engineInstance: any) {
           const folderArg = args[0]?.folder || "";
           const userRole = args[0]?.role || "user";
 
+          // Doctrine enforcement
           let doctrineResult = { success: true };
           if (doctrine && typeof (doctrine as any).enforceAction === "function") {
             doctrineResult = await (doctrine as any).enforceAction(action, folderArg, userRole);
@@ -50,6 +65,7 @@ export function registerEngine(name: string, engineInstance: any) {
             return { blocked: true, message: doctrineResult.message };
           }
 
+          // Run original method with self-healing
           try {
             return await origMethod.apply(target, args);
           } catch (err) {
@@ -65,7 +81,9 @@ export function registerEngine(name: string, engineInstance: any) {
   });
 }
 
-// simple event bus
+// -----------------------------
+// Event Bus
+// -----------------------------
 export const eventBus: Record<string, Function[]> = {};
 export function subscribe(channel: string, callback: Function) {
   if (!eventBus[channel]) eventBus[channel] = [];
@@ -76,8 +94,10 @@ export function publish(channel: string, data: any) {
   subscribers.forEach(cb => cb(data));
 }
 
-// runEngineChain helper
-export async function runEngineChain(chain: {engine: string, input?: any}[]) {
+// -----------------------------
+// Run multiple engines in sequence
+// -----------------------------
+export async function runEngineChain(chain: { engine: string; input?: any }[]) {
   let lastOutput: any = null;
   for (const step of chain) {
     const engine = engineManager[step.engine];
@@ -93,7 +113,9 @@ export async function runEngineChain(chain: {engine: string, input?: any}[]) {
   return lastOutput;
 }
 
-// Register engines
+// -----------------------------
+// Register all 22 engines
+// -----------------------------
 registerEngine("SelfImprovementEngine", new SelfImprovementEngine());
 registerEngine("PredictiveEngine", new PredictiveEngine());
 registerEngine("CodeEngine", new CodeEngine());
@@ -115,4 +137,4 @@ registerEngine("PersonaEngine", new PersonaEngine());
 registerEngine("CreativityEngine", new CreativityEngine());
 registerEngine("OrchestrationEngine", new OrchestrationEngine());
 registerEngine("SearchEngine", new SearchEngine());
-registerEngine("DoctrineEngine", new DoctrineEngine());
+registerEngine("DoctrineEngine", doctrine); // Doctrine itself is also registered
