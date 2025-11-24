@@ -1,37 +1,55 @@
-// src/engines/GamingCreativeEngine/index.ts
 import { EngineBase } from "../EngineBase";
-import { RealtimeRecommenderEngine } from "../RealtimeRecommenderEngine";
+import { logger } from "../../utils/logger";
 
 export class GamingCreativeEngine extends EngineBase {
-    name = "GamingCreativeEngine";
+  constructor() {
+    super();
+    this.name = "GamingCreativeEngine";
+    this.survivalCheck();
+  }
 
-    constructor(private recommender?: RealtimeRecommenderEngine) {
-        super();
+  // Example survival check
+  async survivalCheck() {
+    logger.info(`[${this.name}] Running survival check...`);
+    // Check dependencies or required assets
+    return true;
+  }
+
+  // Main run method
+  async run(input: any) {
+    logger.info(`[${this.name}] Running with input:`, input);
+
+    // Example: generate game content or creative assets
+    const output = {
+      content: `Generated game content based on ${input?.theme || "default theme"}`,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Optionally, trigger events or call other engines
+    if ((globalThis as any).__NE_ENGINE_MANAGER?.CreativityEngine) {
+      const creativityEngine = (globalThis as any).__NE_ENGINE_MANAGER.CreativityEngine;
+      await creativityEngine.run({ prompt: input?.theme || "default theme" });
     }
 
-    generateStory(prompt: string, style: string = "fantasy"): string {
-        // Example: integrate reasoning, embeddings, or other engines for creativity
-        return `Story (${style}): Once upon a time... inspired by '${prompt}'`;
-    }
+    return output;
+  }
 
-    generateMusic(theme: string, mood: string = "happy"): string {
-        // Returns link or base64 to music file
-        return `Music: Generated ${mood} track based on theme '${theme}'`;
-    }
+  // Optional recovery in case of errors
+  async recover(err: any) {
+    logger.error(`[${this.name}] Error recovered:`, err);
+    // Implement fallback or default content generation
+    return { content: "Default creative content generated", recovered: true };
+  }
 
-    generateVideo(script: string, style: string = "cinematic"): string {
-        // Returns video file link or metadata
-        return `Video: Generated ${style} video based on script '${script}'`;
+  // Example method to talk to another engine
+  async talkTo(engineName: string, method: string, payload: any) {
+    const engine = (globalThis as any).__NE_ENGINE_MANAGER[engineName];
+    if (engine && typeof engine[method] === "function") {
+      return engine[method](payload);
     }
-
-    generateGame(levelName: string, genre: string = "platformer"): string {
-        // Returns game assets or simulation placeholder
-        return `Game: ${genre} level '${levelName}' generated`;
-    }
-
-    recommendImprovements(input: any): string[] {
-        if (!this.recommender) return [];
-        const recs = this.recommender.analyzeSystemState(input);
-        return recs.map(r => `${r.severity.toUpperCase()}: ${r.message}`);
-    }
+    return null;
+  }
 }
+
+// If you want, we can also immediately register it in engineManager
+// registerEngine("GamingCreativeEngine", new GamingCreativeEngine());
