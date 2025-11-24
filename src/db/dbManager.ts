@@ -1,25 +1,28 @@
-import { eventBus } from "../core/engineManager";
+import { edgeDB } from "./edge/edgeDB";
+import { sharedDB } from "./shared/sharedDB";
 
-export const db: any = {
-  edge: { medicine: {} },
-  shared: { medicine: {} },
-
-  async set(collection: string, key: string, value: any, source: "edge" | "shared" = "edge") {
-    const target = source === "edge" ? this.edge : this.shared;
-    target[collection][key] = { ...value, updatedAt: Date.now() };
-
-    // Trigger DB update event
-    eventBus["db:update"]?.forEach(cb => cb({ collection, key, value: target[collection][key] }));
-    return target[collection][key];
+export const db = {
+  async get(collection: string, key: string, location: "edge" | "shared" = "edge") {
+    return location === "edge"
+      ? await edgeDB.get(collection, key)
+      : await sharedDB.get(collection, key);
   },
 
-  async get(collection: string, key: string, source: "edge" | "shared" = "edge") {
-    const target = source === "edge" ? this.edge : this.shared;
-    return target[collection][key] ?? null;
+  async set(collection: string, key: string, value: any, location: "edge" | "shared" = "edge") {
+    return location === "edge"
+      ? await edgeDB.set(collection, key, value)
+      : await sharedDB.set(collection, key, value);
   },
 
-  async getAll(collection: string, source: "edge" | "shared" = "edge") {
-    const target = source === "edge" ? this.edge : this.shared;
-    return Object.values(target[collection] ?? {});
+  async delete(collection: string, key: string, location: "edge" | "shared" = "edge") {
+    return location === "edge"
+      ? await edgeDB.delete(collection, key)
+      : await sharedDB.delete(collection, key);
+  },
+
+  async getAll(collection: string, location: "edge" | "shared" = "edge") {
+    return location === "edge"
+      ? await edgeDB.getAll(collection)
+      : await sharedDB.getAll(collection);
   }
 };
