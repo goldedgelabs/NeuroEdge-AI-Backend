@@ -1,19 +1,12 @@
 // src/database/index.ts
-import { LocalDB } from "./local/LocalDB";
-import { DistributedDB } from "./distributed/DistributedDB";
-import { Replicator } from "./replication/Replicator";
 
-export const localDB = new LocalDB();
-export const distributedDB = new DistributedDB();
-export const replicator = new Replicator();
+import { DatabaseManager } from "./DatabaseManager";
+import { logger } from "../utils/logger";
 
-// Utility to sync local -> distributed
-export async function syncLocalToDistributed(key: string, value: any) {
-  await localDB.set(key, value);
-  await distributedDB.pushUpdate(key, value);
-}
+// Create global entry point for the entire DB system
+export const DB = new DatabaseManager();
 
-// Utility to sync distributed -> local
-export async function receiveDistributedUpdate(data: { key: string; value: any }) {
-  await localDB.set(data.key, data.value);
-}
+// Expose globally so engines & agents use without circular imports
+(globalThis as any).__NEUROEDGE_DB = DB;
+
+logger.info("[Database] Hybrid DB Initialized (Local + Distributed + CRDT Sync)");
