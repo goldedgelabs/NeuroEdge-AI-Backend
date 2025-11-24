@@ -37,7 +37,10 @@ import { DoctrineEngine } from "./engines/DoctrineEngine";
 import { ARVEngine } from "./engines/ARVEngine";
 import { MedicineManagementEngine } from "./engines/MedicineManagementEngine";
 import { GoldEdgeIntegrationEngine } from "./engines/GoldEdgeIntegrationEngine";
+import { initializeDBWiring } from "./core/dbEventWiring";
 
+// Initialize DB event subscriptions for all engines & agents
+initializeDBWiring();
 // Agents
 import { PlannerAgent } from "./agents/PlannerAgent";
 import { CriticAgent } from "./agents/CriticAgent";
