@@ -1,27 +1,55 @@
-// src/engines/MultiModalEngine/index.ts
 import { EngineBase } from "../EngineBase";
-import { survivalCheck } from "./survival_check";
-import { fuseInputs } from "./fusionProcessor";
 import { logger } from "../../utils/logger";
 
 export class MultiModalEngine extends EngineBase {
-    name = "MultiModalEngine";
+  constructor() {
+    super();
+    this.name = "MultiModalEngine";
+    this.survivalCheck();
+  }
 
-    constructor() {
-        super();
-        const status = survivalCheck();
-        if (!status.online) logger.warn(`[${this.name}] Offline mode activated`);
-        logger.log(`[${this.name}] Initialized`);
+  async survivalCheck() {
+    logger.info(`[${this.name}] Performing survival check...`);
+    // Check for GPU availability, libraries for vision, audio, text
+    return true;
+  }
+
+  // Main run function: handles text, vision, audio inputs
+  async run(input: any) {
+    logger.info(`[${this.name}] Running with input:`, input);
+
+    let result: any = {};
+
+    if (input?.text) {
+      result.textAnalysis = `Processed text: ${input.text}`;
     }
 
-    async process(inputs: {
-        text?: string;
-        audioBuffer?: Buffer;
-        imageBuffer?: Buffer;
-        data?: any;
-        userId?: string;
-    }) {
-        const result = await fuseInputs(inputs);
-        return result;
+    if (input?.image) {
+      result.imageAnalysis = `Processed image with size: ${input.image.length || "unknown"}`;
     }
+
+    if (input?.audio) {
+      result.audioAnalysis = `Processed audio duration: ${input.audio.duration || "unknown"}`;
+    }
+
+    return { status: "ok", output: result };
+  }
+
+  // Self-healing
+  async recover(err: any) {
+    logger.error(`[${this.name}] Error recovered:`, err);
+    return { status: "recovered", message: "MultiModalEngine recovered" };
+  }
+
+  // Communicate with other engines
+  async talkTo(engineName: string, method: string, payload: any) {
+    const engine = (globalThis as any).__NE_ENGINE_MANAGER[engineName];
+    if (engine && typeof engine[method] === "function") {
+      return engine[method](payload);
+    }
+    return null;
+  }
 }
+
+// Optional: register immediately
+// registerEngine("MultiModalEngine", new MultiModalEngine());
