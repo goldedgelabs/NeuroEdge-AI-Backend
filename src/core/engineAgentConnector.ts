@@ -1,69 +1,97 @@
 // src/core/engineAgentConnector.ts
 /**
  * NeuroEdge Engine ↔ Agent Connector
- * -----------------------------------
- * Automatically wires engines to agents using enginePublisher.
- * Ensures:
- *  - Doctrine enforcement
- *  - Self-healing
- *  - Event-driven communication
+ * ----------------------------------
+ * Central wiring of engines and agents
+ * - Uses global engineManager & agentManager
+ * - Doctrine enforcement is applied automatically
+ * - Self-healing triggers if agent fails
+ * - EventBus handles all inter-communication
  */
 
-import { enableAutoPublish } from "./enginePublisher";
-import { agentManager, eventBus } from "./engineManager";
+import { engineManager, eventBus } from "./engineManager";
+import { agentManager } from "./agentManager";
 
-// Mapping: which agent listens to which engine
-const engineAgentMap: Record<string, string[]> = {
-  // Example
-  MedicineEngine: ["MedicineManagementAgent"],
-  PhoneSecurityEngine: ["PhoneSecurityAgent"],
-  GoldEdgeIntegrationEngine: ["GoldEdgeIntegrationAgent"],
-  SelfImprovementEngine: ["LearningAgent", "EvolutionAgent"],
-  PredictiveEngine: ["AnalyticsAgent", "MetricsAgent"],
-  HealthEngine: ["MedicineManagementAgent", "FeedbackAgent"],
-  PlannerEngine: ["PlannerHelperAgent", "SchedulerAgent"],
-  VoiceEngine: ["VoiceAgent", "ConversationAgent"],
-  VisionEngine: ["VisionAgent"],
-  SecurityEngine: ["SecurityCheckAgent", "SecurityAgent"],
-  TranslationEngine: ["TranslatorAgent"],
-  SummarizationEngine: ["SummarizationAgent"],
-  PersonaEngine: ["PersonaAgent"],
-  CreativityEngine: ["CreativityAgent"],
-  OrchestrationEngine: ["OrchestrationAgent", "OrchestratorAgent"],
-  SearchEngine: ["SearchAgent"],
-  DoctrineEngine: ["DoctrineAgent"],
-  MonitoringEngine: ["MonitoringAgent", "TelemetryAgent"],
-  DataIngestEngine: ["DataIngestAgent", "FileHandlerAgent"],
-  AnalyticsEngine: ["AnalyticsAgent", "MetricsAgent"],
-  ReinforcementEngine: ["ReinforcementAgent"],
-  MemoryEngine: ["MemoryAgent"],
-  RecommendationEngine: ["RecommendationAgent"],
-  SchedulingEngine: ["SchedulingAgent"],
-  ARVEngine: ["ARVAgent"],
-  SelfHealingEngine: ["SelfHealingAgent", "SupervisorAgent"]
-};
+// -----------------------------
+// Helper to wire engine → agent events
+// -----------------------------
+function wireEngineToAgent(engineName: string, agentNames: string[], methodName: string = "run") {
+  eventBus.subscribe(`engine:${engineName}`, async (payload: any) => {
+    for (const agentName of agentNames) {
+      const agent = agentManager[agentName];
+      if (!agent) continue;
 
-// Wire engines to agents using eventBus
-export function connectEnginesToAgents() {
-  for (const [engineName, agents] of Object.entries(engineAgentMap)) {
-    // Enable auto-publish for this engine
-    enableAutoPublish(engineName);
-
-    // Subscribe each agent to the engine events
-    agents.forEach((agentName) => {
-      const channel = `${engineName}:run`;
-      eventBus.subscribe(channel, async (payload: any) => {
-        const agent = agentManager[agentName];
-        if (agent && typeof agent.handleEngineEvent === "function") {
-          try {
-            await agent.handleEngineEvent(engineName, payload);
-          } catch (err) {
-            if (typeof agent.recover === "function") {
-              await agent.recover(err);
-            }
+      if (typeof agent[methodName] === "function") {
+        try {
+          await agent[methodName](payload);
+        } catch (err) {
+          if (typeof agent.recover === "function") {
+            await agent.recover(err);
           }
         }
-      });
-    });
+      }
+    }
+  });
+}
+
+// -----------------------------
+// Engine → Agent Wiring Map
+// -----------------------------
+const wiringMap: Record<string, string[]> = {
+  SelfImprovementEngine: ["SelfImprovementAgent", "EvolutionAgent", "LearningAgent"],
+  PredictiveEngine: ["PredictiveAgent", "AnalyticsAgent", "MetricsAgent"],
+  CodeEngine: ["WorkerAgent", "CriticAgent", "OrchestratorAgent"],
+  VoiceEngine: ["VoiceAgent", "ConversationAgent"],
+  VisionEngine: ["VisionAgent", "CreativityAgent"],
+  ReinforcementEngine: ["ReinforcementAgent", "AnalyticsAgent"],
+  DataIngestEngine: ["DataIngestAgent", "MemoryAgent"],
+  AnalyticsEngine: ["AnalyticsAgent", "MetricsAgent", "TelemetryAgent"],
+  PlannerEngine: ["PlannerAgent", "PlannerHelperAgent", "SupervisorAgent"],
+  MemoryEngine: ["MemoryAgent", "ConversationAgent"],
+  ConversationEngine: ["ConversationAgent", "PersonaAgent"],
+  SchedulingEngine: ["SchedulerAgent", "PlannerAgent"],
+  RecommendationEngine: ["RecommendationAgent", "PersonaAgent"],
+  SecurityEngine: ["SecurityAgent", "SecurityCheckAgent", "SelfProtectionAgent"],
+  MonitoringEngine: ["MonitoringAgent", "TelemetryAgent"],
+  TranslationEngine: ["TranslatorAgent", "ConversationAgent"],
+  SummarizationEngine: ["SummarizationAgent", "ConversationAgent"],
+  PersonaEngine: ["PersonaAgent", "ConversationAgent"],
+  CreativityEngine: ["CreativityAgent", "OrchestrationAgent"],
+  OrchestrationEngine: ["OrchestrationAgent", "PluginManagerAgent", "AutoUpdateAgent"],
+  SearchEngine: ["SearchAgent", "AnalyticsAgent"],
+  DoctrineEngine: ["DoctrineAgent"],
+  ARVEngine: ["ARVAgent", "CreativityAgent"],
+  SelfHealingEngine: ["SelfHealingAgent", "SupervisorAgent"],
+  MedicineEngine: ["MedicineManagementAgent", "DataIngestAgent"],
+  PhoneSecurityEngine: ["PhoneSecurityAgent", "SelfProtectionAgent"],
+  GoldEdgeIntegrationEngine: ["GoldEdgeIntegrationAgent", "PluginManagerAgent"],
+};
+
+// -----------------------------
+// Auto-wire all engines → agents
+// -----------------------------
+for (const [engineName, agentList] of Object.entries(wiringMap)) {
+  wireEngineToAgent(engineName, agentList);
+}
+
+// -----------------------------
+// Optional: trigger engine events manually
+// -----------------------------
+export async function triggerEngine(engineName: string, payload: any) {
+  const engine = engineManager[engineName];
+  if (!engine) throw new Error(`Engine not found: ${engineName}`);
+
+  if (typeof engine.run === "function") {
+    const result = await engine.run(payload);
+    eventBus.publish(`engine:${engineName}`, result);
+    return result;
+  } else {
+    eventBus.publish(`engine:${engineName}`, payload);
+    return payload;
   }
-        }
+}
+
+// -----------------------------
+// Example Usage
+// -----------------------------
+// triggerEngine("PredictiveEngine", { userId: "1234", data: {...} });
