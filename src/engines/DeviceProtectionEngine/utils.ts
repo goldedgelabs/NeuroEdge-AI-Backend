@@ -1,4 +1,6 @@
-export function engineUtils() {
-  // placeholder for engine-specific helper methods
-  return {};
-}
+export const utils = {
+  enforceDevicePolicy: (device: any) => {
+    // Placeholder: logic to enforce device security
+    return true;
+  },
+};
