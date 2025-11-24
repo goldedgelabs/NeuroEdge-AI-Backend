@@ -1,39 +1,33 @@
-import {{ EngineBase }} from "../EngineBase";
-import {{ logger }} from "../../utils/logger";
-import {{ survivalCheck }} from "./survival_check";
+import { EngineBase } from "../EngineBase";
 
-export class CodeEngine extends EngineBase {{
-  name = "CodeEngine";
+export class CodeEngine extends EngineBase {
+  constructor() {
+    super("CodeEngine");
+  }
 
-  constructor() {{
-    super();
-    try {{
-      const status = (typeof survivalCheck === "function") ? survivalCheck() : {{ online: true }};
-      if (status && typeof status.then === "function") {{
-        status.then((s: any) => {{
-          if (!s?.online) logger.warn(`[${{this.name}}] Offline mode activated`);
-        }}).catch((e:any)=>{{ logger.warn(`[${{this.name}}] survivalCheck error`, e); }});
-      }} else {{
-        if (!status?.online) logger.warn(`[${{this.name}}] Offline mode activated`);
-      }}
-    }} catch (err) {{
-      logger.warn(`[${{this.name}}] survival check failed`, err);
-    }}
-    logger.log(`[${{this.name}}] Initialized`);
-  }}
+  async run(input: any) {
+    console.log(`[CodeEngine] Running code input:`, input);
 
-  // talkTo uses a global engineManager set by core/engineManager
-  async talkTo(engineName: string, method: string, payload: any) {{
-    const mgr = (globalThis as any).__NE_ENGINE_MANAGER;
-    if (!mgr) throw new Error("engineManager not initialized");
-    const engine = mgr[engineName];
-    if (!engine) throw new Error(`Engine ${{engineName}} not found`);
-    if (typeof engine[method] !== "function") throw new Error(`Method ${{method}} not found in ${{engineName}}`);
-    return await engine[method](payload);
-  }}
+    const codeSnippet = input?.code || "";
+    const language = input?.language || "javascript";
 
-  async run(input: any) {{
-    logger.info(`[${{this.name}}] run called`);
-    return {{ engine: this.name, input }};
-  }}
-}}
+    // Placeholder for actual code execution or analysis logic
+    const output = `Received code in ${language}: ${codeSnippet}`;
+
+    return {
+      input: codeSnippet,
+      language,
+      output
+    };
+  }
+
+  async handleDBUpdate(event: any) {
+    console.log(`[CodeEngine] DB Update event received:`, event);
+    // Optional: handle code repository or snippet updates
+  }
+
+  async handleDBDelete(event: any) {
+    console.log(`[CodeEngine] DB Delete event received:`, event);
+    // Optional: clean up cached code or logs if relevant
+  }
+}
