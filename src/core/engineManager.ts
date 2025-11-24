@@ -1,16 +1,8 @@
 // src/core/engineManager.ts
-/**
- * NeuroEdge Engine Manager
- * -----------------------
- * Central registry for all engines
- * Provides:
- *  - Doctrine enforcement
- *  - Self-healing
- *  - Event bus support
- *  - Full registration of all 25 engines
- */
-
-import { DoctrineEngine } from "../engines/DoctrineEngine";
+import { DoctrineEngine } from "../engines/DoctrineEngine/index";
+import { db } from "../db/dbManager";
+import { eventBus } from "./engineManagerBase"; // keep base event bus
+import { logger } from "../utils/logger";
 
 // Import all 25 engines
 import { SelfImprovementEngine } from "../engines/SelfImprovementEngine";
@@ -34,20 +26,17 @@ import { PersonaEngine } from "../engines/PersonaEngine";
 import { CreativityEngine } from "../engines/CreativityEngine";
 import { OrchestrationEngine } from "../engines/OrchestrationEngine";
 import { SearchEngine } from "../engines/SearchEngine";
-import { MedicineEngine } from "../engines/MedicineEngine"; // new
-import { PhoneSecurityEngine } from "../engines/PhoneSecurityEngine"; // new
-import { GoldEdgeIntegrationEngine } from "../engines/GoldEdgeIntegrationEngine"; // new
-import { ARVEngine } from "../engines/ARVEngine"; // new
+import { DoctrineEngine } from "../engines/DoctrineEngine";
+import { PhoneSecurityEngine } from "../engines/PhoneSecurityEngine";
+import { MedicineManagementEngine } from "../engines/MedicineManagementEngine";
+import { GoldEdgeIntegrationEngine } from "../engines/GoldEdgeIntegrationEngine";
 
-// Engine registry
 export const engineManager: Record<string, any> = {};
 const doctrine = new DoctrineEngine();
-
-// global reference for engines to access manager
 (globalThis as any).__NE_ENGINE_MANAGER = engineManager;
 
 // -----------------------------
-// Register function with Doctrine enforcement & self-healing
+// Register Engines with Doctrine & DB integration
 // -----------------------------
 export function registerEngine(name: string, engineInstance: any) {
   engineManager[name] = new Proxy(engineInstance, {
@@ -61,18 +50,24 @@ export function registerEngine(name: string, engineInstance: any) {
 
           // Doctrine enforcement
           let doctrineResult = { success: true };
-          if (doctrine && typeof doctrine.enforceAction === "function") {
-            doctrineResult = await doctrine.enforceAction(action, folderArg, userRole);
+          if (doctrine && typeof (doctrine as any).enforceAction === "function") {
+            doctrineResult = await (doctrine as any).enforceAction(action, folderArg, userRole);
           }
-
           if (!doctrineResult.success) {
-            console.warn(`[Doctrine] Action blocked: ${action}`);
+            logger.warn(`[Doctrine] Action blocked: ${action}`);
             return { blocked: true, message: doctrineResult.message };
           }
 
           // Run original method with self-healing
           try {
-            return await origMethod.apply(target, args);
+            const result = await origMethod.apply(target, args);
+
+            // Optionally write to DB if engine emits data
+            if (args[0]?.dbCollection && args[0]?.dbKey) {
+              await db.set(args[0].dbCollection, args[0].dbKey, result, args[0].dbTarget || "edge");
+            }
+
+            return result;
           } catch (err) {
             if (typeof target.recover === "function") {
               await target.recover(err);
@@ -82,40 +77,8 @@ export function registerEngine(name: string, engineInstance: any) {
         };
       }
       return origMethod;
-    }
+    },
   });
-}
-
-// -----------------------------
-// Event Bus for engine communication
-// -----------------------------
-export const eventBus: Record<string, Function[]> = {};
-export function subscribe(channel: string, callback: Function) {
-  if (!eventBus[channel]) eventBus[channel] = [];
-  eventBus[channel].push(callback);
-}
-export function publish(channel: string, data: any) {
-  const subscribers = eventBus[channel] || [];
-  subscribers.forEach(cb => cb(data));
-}
-
-// -----------------------------
-// Run multiple engines in sequence
-// -----------------------------
-export async function runEngineChain(chain: { engine: string; input?: any }[]) {
-  let lastOutput: any = null;
-  for (const step of chain) {
-    const engine = engineManager[step.engine];
-    if (!engine) throw new Error(`Engine not registered: ${step.engine}`);
-    if (typeof engine.run === "function") {
-      lastOutput = await engine.run(step.input ?? lastOutput);
-    } else if (typeof engine === "function") {
-      lastOutput = await engine(step.input ?? lastOutput);
-    } else {
-      lastOutput = null;
-    }
-  }
-  return lastOutput;
 }
 
 // -----------------------------
@@ -126,20 +89,7 @@ const engines = [
   ReinforcementEngine, DataIngestEngine, AnalyticsEngine, PlannerEngine, MemoryEngine,
   ConversationEngine, SchedulingEngine, RecommendationEngine, SecurityEngine, MonitoringEngine,
   TranslationEngine, SummarizationEngine, PersonaEngine, CreativityEngine, OrchestrationEngine,
-  SearchEngine, MedicineEngine, PhoneSecurityEngine, GoldEdgeIntegrationEngine, ARVEngine
+  SearchEngine, DoctrineEngine, PhoneSecurityEngine, MedicineManagementEngine, GoldEdgeIntegrationEngine
 ];
 
-const engineNames = [
-  "SelfImprovementEngine", "PredictiveEngine", "CodeEngine", "VoiceEngine", "VisionEngine",
-  "ReinforcementEngine", "DataIngestEngine", "AnalyticsEngine", "PlannerEngine", "MemoryEngine",
-  "ConversationEngine", "SchedulingEngine", "RecommendationEngine", "SecurityEngine", "MonitoringEngine",
-  "TranslationEngine", "SummarizationEngine", "PersonaEngine", "CreativityEngine", "OrchestrationEngine",
-  "SearchEngine", "MedicineEngine", "PhoneSecurityEngine", "GoldEdgeIntegrationEngine", "ARVEngine"
-];
-
-engines.forEach((engine, idx) => {
-  registerEngine(engineNames[idx], new engine());
-});
-
-// Register Doctrine engine itself
-registerEngine("DoctrineEngine", doctrine);
+engines.forEach(Eng => registerEngine(Eng.name, new Eng()));
