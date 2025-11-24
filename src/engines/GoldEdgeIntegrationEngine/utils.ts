@@ -1,4 +1,6 @@
-export function engineUtils() {
-  // placeholder for engine-specific helper methods
-  return {};
-}
+export const utils = {
+  linkWithGoldEdgeApps: (data: any) => {
+    // Placeholder for app integration logic
+    return true;
+  },
+};
