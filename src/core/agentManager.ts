@@ -11,7 +11,7 @@
 
 import { DoctrineAgent } from "../agents/DoctrineAgent";
 
-// Import all 56 agents (52 existing + 4 new)
+// Existing Agents
 import { PlannerAgent } from "../agents/PlannerAgent";
 import { CriticAgent } from "../agents/CriticAgent";
 import { WorkerAgent } from "../agents/WorkerAgent";
@@ -32,7 +32,6 @@ import { SecurityAgent } from "../agents/SecurityAgent";
 import { VisionAgent } from "../agents/VisionAgent";
 import { VoiceAgent } from "../agents/VoiceAgent";
 import { ReinforcementAgent } from "../agents/ReinforcementAgent";
-import { DoctrineAgent as DA } from "../agents/DoctrineAgent";
 import { PersonaAgent } from "../agents/PersonaAgent";
 import { ARVAgent } from "../agents/ARVAgent";
 import { SelfImprovementAgent } from "../agents/SelfImprovementAgent";
@@ -72,13 +71,13 @@ import { GoldEdgeIntegrationAgent } from "../agents/GoldEdgeIntegrationAgent";
 import { SelfProtectionAgent } from "../agents/SelfProtectionAgent";
 
 export const agentManager: Record<string, any> = {};
-const doctrine = new DA();
+const doctrine = new DoctrineAgent();
 
 // Global reference
 (globalThis as any).__NE_AGENT_MANAGER = agentManager;
 
 // -----------------------------
-// Register Agents with Doctrine enforcement & self-healing
+// Proxy + Doctrine Enforcement
 // -----------------------------
 export function registerAgent(name: string, agentInstance: any) {
   agentManager[name] = new Proxy(agentInstance, {
@@ -129,21 +128,22 @@ export function publish(channel: string, data: any) {
 }
 
 // -----------------------------
-// Register all 56 agents
+// Register All Agents
 // -----------------------------
 const allAgents = [
   PlannerAgent, CriticAgent, WorkerAgent, VerifierAgent, SupervisorAgent,
   SelfHealingAgent, PredictiveAgent, AnalyticsAgent, MemoryAgent, TranslatorAgent,
   ConversationAgent, MonitoringAgent, SchedulingAgent, RecommendationAgent,
   OrchestrationAgent, CreativityAgent, SecurityAgent, VisionAgent, VoiceAgent,
-  ReinforcementAgent, DA, PersonaAgent, ARVAgent, SelfImprovementAgent, DataIngestAgent,
+  ReinforcementAgent, PersonaAgent, ARVAgent, SelfImprovementAgent, DataIngestAgent,
   SummarizationAgent, SearchAgent, OrchestratorAgent, SchedulerAgent, PlannerHelperAgent,
   MetricsAgent, TelemetryAgent, FileHandlerAgent, BillingAgent, FounderAgent,
   PluginAgent, GPUAgent, OfflineAgent, AutoUpdateAgent, HotReloadAgent,
   SecurityCheckAgent, DistributedTaskAgent, PluginManagerAgent, LocalStorageAgent,
   EdgeDeviceAgent, CollaborationAgent, ResearchAgent, SimulationAgent, FeedbackAgent,
-  EvolutionAgent, LearningAgent, GlobalMeshAgent, PhoneSecurityAgent,
-  MedicineManagementAgent, GoldEdgeIntegrationAgent, SelfProtectionAgent
+  EvolutionAgent, LearningAgent, GlobalMeshAgent,
+  PhoneSecurityAgent, MedicineManagementAgent, GoldEdgeIntegrationAgent, SelfProtectionAgent,
+  DoctrineAgent
 ];
 
 allAgents.forEach(AgentClass => {
