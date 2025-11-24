@@ -1,29 +1,27 @@
 import { EngineBase } from "../EngineBase";
+import { logger } from "../../utils/logger";
 import { survivalCheck } from "./survival_check";
+import { utils } from "./utils";
 
-export class <EngineName> extends EngineBase {
-  name = "<EngineName>";
-
+export class HealthEngine extends EngineBase {
   constructor() {
     super();
-    survivalCheck();
+    survivalCheck(this);
   }
 
   async run(input: any) {
-    // placeholder for main logic
-    return { engine: this.name, input };
+    logger.log("[HealthEngine] Running with input:", input);
+    // Placeholder: integrate with MedicineManagementAgent later
+    return { success: true, data: input };
   }
 
-  async recover(error: any) {
-    console.warn(`[${this.name}] Recovered from error`, error);
-    return { recovered: true };
+  async recover(err: any) {
+    logger.error("[HealthEngine] Recovery triggered:", err);
   }
 
-  async talkTo(engineName: string, method: string, payload: any) {
-    const manager = (globalThis as any).__NE_ENGINE_MANAGER;
-    if (manager && manager[engineName] && typeof manager[engineName][method] === "function") {
-      return await manager[engineName][method](payload);
-    }
-    return null;
+  async checkHealth() {
+    return survivalCheck(this);
   }
+
+  utils = utils;
 }
