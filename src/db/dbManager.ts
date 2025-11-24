@@ -1,88 +1,90 @@
 // src/db/dbManager.ts
+import fs from "fs";
+import path from "path";
+import { agentManager } from "../core/agentManager";
+import { engineManager } from "../core/engineManager";
 import { eventBus } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { DoctrineAgent } from "../agents/DoctrineAgent";
 
-type StorageType = "edge" | "shared";
+// Paths
+const EDGE_PATH = path.join(__dirname, "edge");
+const SHARED_PATH = path.join(__dirname, "shared");
 
-interface DBRecord {
-  [key: string]: any;
+// Ensure directories exist
+if (!fs.existsSync(EDGE_PATH)) fs.mkdirSync(EDGE_PATH, { recursive: true });
+if (!fs.existsSync(SHARED_PATH)) fs.mkdirSync(SHARED_PATH, { recursive: true });
+
+// Doctrine enforcement
+const doctrine = new DoctrineAgent();
+
+// Helper: read JSON file
+function readFile(location: "edge" | "shared", collection: string) {
+  const base = location === "edge" ? EDGE_PATH : SHARED_PATH;
+  const filePath = path.join(base, `${collection}.json`);
+  if (!fs.existsSync(filePath)) return {};
+  return JSON.parse(fs.readFileSync(filePath, "utf8") || "{}");
 }
 
-interface DBCollection {
-  [id: string]: DBRecord;
+// Helper: write JSON file
+function writeFile(location: "edge" | "shared", collection: string, data: any) {
+  const base = location === "edge" ? EDGE_PATH : SHARED_PATH;
+  const filePath = path.join(base, `${collection}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
-class DBManager {
-  private edgeDB: Record<string, DBCollection> = {};
-  private sharedDB: Record<string, DBCollection> = {};
+export const db = {
+  async get(collection: string, key: string, location: "edge" | "shared" = "edge") {
+    const data = readFile(location, collection);
+    return data[key] || null;
+  },
 
-  // --------------------------
-  // Set record
-  // --------------------------
-  async set(collection: string, key: string, value: any, target: StorageType = "edge") {
-    const db = target === "edge" ? this.edgeDB : this.sharedDB;
-    if (!db[collection]) db[collection] = {};
-    db[collection][key] = value;
-
-    // Trigger event
-    eventBus.publish("db:update", { collection, key, value, target });
-    logger.info(`[DB] Set ${target}:${collection}:${key}`);
-    return true;
-  }
-
-  // --------------------------
-  // Get record
-  // --------------------------
-  async get(collection: string, key: string, target: StorageType = "edge") {
-    const db = target === "edge" ? this.edgeDB : this.sharedDB;
-    return db[collection]?.[key] ?? null;
-  }
-
-  // --------------------------
-  // Get all records
-  // --------------------------
-  async getAll(collection: string, target: StorageType = "edge") {
-    const db = target === "edge" ? this.edgeDB : this.sharedDB;
-    const coll = db[collection] || {};
-    return Object.values(coll);
-  }
-
-  // --------------------------
-  // Delete record
-  // --------------------------
-  async delete(collection: string, key: string, target: StorageType = "edge") {
-    const db = target === "edge" ? this.edgeDB : this.sharedDB;
-    if (db[collection]?.[key]) {
-      delete db[collection][key];
-      eventBus.publish("db:delete", { collection, key, target });
-      logger.info(`[DB] Deleted ${target}:${collection}:${key}`);
-      return true;
+  async set(collection: string, key: string, value: any, location: "edge" | "shared" = "edge") {
+    // Doctrine check
+    const action = `db.set:${collection}.${key}`;
+    const doctrineResult = await doctrine.enforceAction(action, "", "user");
+    if (!doctrineResult.success) {
+      console.warn(`[Doctrine] DB write blocked: ${collection}.${key}`);
+      return { blocked: true, message: doctrineResult.message };
     }
-    return false;
-  }
 
-  // --------------------------
-  // Replicate edge → shared
-  // --------------------------
+    const data = readFile(location, collection);
+    data[key] = value;
+    writeFile(location, collection, data);
+
+    // Publish event
+    eventBus.publish("db:update", { collection, key, value, target: location });
+
+    return value;
+  },
+
+  async delete(collection: string, key: string, location: "edge" | "shared" = "edge") {
+    const data = readFile(location, collection);
+    if (data[key]) delete data[key];
+    writeFile(location, collection, data);
+
+    // Publish deletion event
+    eventBus.publish("db:delete", { collection, key, target: location });
+    return true;
+  },
+
+  async getAll(collection: string, location: "edge" | "shared" = "edge") {
+    const data = readFile(location, collection);
+    return Object.values(data);
+  },
+
   async replicateEdgeToShared(collection: string) {
     const edgeRecords = await this.getAll(collection, "edge");
     for (const record of edgeRecords) {
       await this.set(collection, record.id, record, "shared");
     }
-    logger.info(`[DB] Replicated edge → shared for ${collection}`);
-  }
+  },
 
-  // --------------------------
-  // Subscribe to DB events
-  // --------------------------
-  subscribeUpdate(callback: (event: any) => void) {
-    eventBus.subscribe("db:update", callback);
+  async subscribe(collection: string, callback: Function) {
+    eventBus.subscribe("db:update", (event: any) => {
+      if (event.collection === collection) callback(event);
+    });
+    eventBus.subscribe("db:delete", (event: any) => {
+      if (event.collection === collection) callback(event);
+    });
   }
-
-  subscribeDelete(callback: (event: any) => void) {
-    eventBus.subscribe("db:delete", callback);
-  }
-}
-
-// Export a singleton
-export const db = new DBManager();
+};
