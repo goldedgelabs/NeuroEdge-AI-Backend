@@ -1,20 +1,40 @@
-// src/engines/AgentsEngine/index.ts
 import { EngineBase } from "../EngineBase";
-import { survivalCheck } from "./survival_check";
-import { orchestrateTask } from "./agentOrchestrator";
-import { logger } from "../../utils/logger";
+import { agentManager } from "../../core/agentManager";
 
 export class AgentsEngine extends EngineBase {
-    name = "AgentsEngine";
+  constructor() {
+    super("AgentsEngine");
+  }
 
-    constructor() {
-        super();
-        const status = survivalCheck();
-        if (!status.online) logger.warn(`[${this.name}] Offline mode activated`);
-        logger.log(`[${this.name}] Initialized with ${status.activeAgents} active agents`);
+  async run(input: any) {
+    console.log(`[AgentsEngine] Running agent orchestration with input:`, input);
+
+    // Example: Trigger multiple agents in sequence
+    const agentNames = input?.agents || Object.keys(agentManager);
+    const results: Record<string, any> = {};
+
+    for (const agentName of agentNames) {
+      const agent = agentManager[agentName];
+      if (agent && typeof agent.run === "function") {
+        try {
+          results[agentName] = await agent.run(input);
+        } catch (err) {
+          console.warn(`[AgentsEngine] Error running ${agentName}:`, err);
+          results[agentName] = { error: "Failed to run agent" };
+        }
+      }
     }
 
-    async runTask(task: string, context: any = {}) {
-        return await orchestrateTask(task, context);
-    }
+    return results;
+  }
+
+  async handleDBUpdate(event: any) {
+    console.log(`[AgentsEngine] DB Update event received:`, event);
+    // Optional: Trigger agents based on DB changes
+  }
+
+  async handleDBDelete(event: any) {
+    console.log(`[AgentsEngine] DB Delete event received:`, event);
+    // Optional: Trigger agents to clean up resources
+  }
 }
