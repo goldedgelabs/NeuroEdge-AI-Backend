@@ -1,4 +1,4 @@
-# NeuroEdge AI Core
+# NeuroEdge AI Core TypeScript Engine
 
 NeuroEdge is a distributed, offline-first AI system containing:
 
