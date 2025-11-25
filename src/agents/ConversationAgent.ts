@@ -1,53 +1,108 @@
-// src/agents/ConversationAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/eventBus";
+import { db } from "../db/dbManager";
 
-export class ConversationAgent {
-  name = "ConversationAgent";
-
+/**
+ * Conversation Agent
+ * ------------------
+ * Handles all user–AI conversational flows.
+ * Controls tone, context, reply shaping, memory injection,
+ * and routing requests to engines when needed.
+ */
+export class ConversationAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super({
+      id: "conversation-agent",
+      name: "Conversation Agent",
+      description: "Manages user conversations, context tracking, memory injection, and routing.",
+      type: "core"
+    });
   }
 
   /**
-   * Generate a response using the ConversationEngine
-   * @param input User input or prompt
+   * Primary conversation handler
    */
-  async chat(input: string) {
-    const convoEngine = engineManager["ConversationEngine"];
-    if (!convoEngine) {
-      logger.warn(`[${this.name}] ConversationEngine not found`);
-      return { error: "ConversationEngine not found" };
+  async handle(payload: any): Promise<any> {
+    const { message, userId = "anonymous" } = payload;
+
+    // Step 1 — Check moderation
+    const moderation = await this.scanForSafety(message);
+    if (!moderation.safe) {
+      return {
+        blocked: true,
+        reason: "Message violates conversation safety rules.",
+        flags: moderation.flags
+      };
     }
 
-    try {
-      const response = await convoEngine.run({ action: "chat", input });
-      logger.info(`[${this.name}] Generated response`);
-      return response;
-    } catch (err) {
-      logger.error(`[${this.name}] Chat failed:`, err);
-      return { error: "Chat failed", details: err };
-    }
+    // Step 2 — Retrieve user memory
+    const memory = await this.getUserMemory(userId);
+
+    // Step 3 — Generate AI reply (placeholder)
+    const reply = await this.generateReply(message, memory);
+
+    // Step 4 — Save conversation to DB
+    await this.storeMessage(userId, message, reply);
+
+    // Step 5 — Publish conversation event
+    eventBus.publish("conversation:new", {
+      userId,
+      input: message,
+      output: reply
+    });
+
+    return { reply };
   }
 
   /**
-   * Summarize conversation context
-   * @param context Array of messages
+   * Lightweight text safety scanning
    */
-  async summarize(context: string[]) {
-    const convoEngine = engineManager["ConversationEngine"];
-    if (!convoEngine) {
-      logger.warn(`[${this.name}] ConversationEngine not found`);
-      return { error: "ConversationEngine not found" };
-    }
+  async scanForSafety(text: string) {
+    const redFlags = ["kill", "hack", "sex", "bomb"];
+    const found = redFlags.filter((w) => text.toLowerCase().includes(w));
 
-    try {
-      const summary = await convoEngine.run({ action: "summarize", context });
-      logger.info(`[${this.name}] Conversation summarized`);
-      return summary;
-    } catch (err) {
-      logger.error(`[${this.name}] Summarize failed:`, err);
-      return { error: "Summarize failed", details: err };
+    if (found.length > 0) {
+      return { safe: false, flags: found };
     }
+    return { safe: true };
+  }
+
+  /**
+   * Store message in conversation logs
+   */
+  async storeMessage(userId: string, userMessage: string, aiReply: string) {
+    const record = {
+      id: `${Date.now()}`,
+      timestamp: Date.now(),
+      userId,
+      message: userMessage,
+      reply: aiReply
+    };
+
+    await db.set("conversations", record.id, record, "edge");
+  }
+
+  /**
+   * Retrieve user's memory profile
+   */
+  async getUserMemory(userId: string) {
+    return await db.get("memory_profiles", userId, "shared");
+  }
+
+  /**
+   * Placeholder reply system (will later connect to ReasoningEngine)
+   */
+  async generateReply(input: string, memory: any) {
+    const memoryNote = memory ? ` (I remember you)` : "";
+    return `You said: "${input}". Tell me more.${memoryNote}`;
+  }
+
+  /**
+   * Subscribes to new conversation events
+   */
+  async init() {
+    eventBus.subscribe("conversation:new", (data) => {
+      console.log(`[ConversationAgent] New conversation:`, data);
+    });
   }
 }
