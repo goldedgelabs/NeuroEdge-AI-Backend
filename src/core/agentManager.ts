@@ -1,14 +1,14 @@
 // src/core/agentManager.ts
 /**
  * NeuroEdge Agent Manager
- * -----------------------
+ * ----------------------
  * Central registry for all agents
  * Provides:
  *  - Doctrine enforcement
  *  - Self-healing
- *  - DB integration (edge → shared)
- *  - Event-driven notifications (eventBus)
- *  - Automatic registration/unregistration for future agents
+ *  - DB integration
+ *  - Event bus notifications
+ *  - Global reference for easy access
  */
 
 import { DoctrineAgent } from "../agents/DoctrineAgent";
@@ -16,9 +16,7 @@ import { db } from "../db/dbManager";
 import { eventBus } from "./eventBus";
 import { logger } from "../utils/logger";
 
-// -----------------------------
-// Import all 63 agents
-// -----------------------------
+// Import all agents (63+)
 import { ARVAgent } from "../agents/ARVAgent";
 import { AgentBase } from "../agents/AgentBase";
 import { AnalyticsAgent } from "../agents/AnalyticsAgent";
@@ -37,13 +35,12 @@ import { DecisionAgent } from "../agents/DecisionAgent";
 import { DeviceProtectionAgent } from "../agents/DeviceProtectionAgent";
 import { DiscoveryAgent } from "../agents/DiscoveryAgent";
 import { DistributedTaskAgent } from "../agents/DistributedTaskAgent";
-import { DoctrineAgent as DoctrineAgentClass } from "../agents/DoctrineAgent";
 import { EdgeDeviceAgent } from "../agents/EdgeDeviceAgent";
 import { EvolutionAgent } from "../agents/EvolutionAgent";
 import { FeedbackAgent } from "../agents/FeedbackAgent";
 import { FounderAgent } from "../agents/FounderAgent";
 import { GPUAgent } from "../agents/GPUAgent";
-import { GlobalMedAgent } from "../agents/GlobalMedAgent";
+import { GlobalMeshAgent } from "../agents/GlobalMeshAgent";
 import { GoldEdgeIntegrationAgent } from "../agents/GoldEdgeIntegrationAgent";
 import { HotReloadAgent } from "../agents/HotReloadAgent";
 import { InspectionAgent } from "../agents/InspectionAgent";
@@ -90,7 +87,7 @@ const doctrine = new DoctrineAgent();
 (globalThis as any).__NE_AGENT_MANAGER = agentManager;
 
 // -----------------------------
-// Register Agents with Doctrine & self-healing
+// Agent registration with Doctrine & self-healing
 // -----------------------------
 export function registerAgent(name: string, agentInstance: any) {
   agentManager[name] = new Proxy(agentInstance, {
@@ -115,14 +112,14 @@ export function registerAgent(name: string, agentInstance: any) {
           try {
             const result = await origMethod.apply(target, args);
 
-            // DB integration
+            // --- DB integration ---
             if (result?.collection && result?.id) {
               await db.set(result.collection, result.id, result, "edge");
               eventBus.publish("db:update", {
                 collection: result.collection,
                 key: result.id,
                 value: result,
-                source: name
+                source: name,
               });
               logger.log(`[AgentManager] DB updated by ${name}.${String(prop)} → ${result.collection}:${result.id}`);
             }
@@ -137,17 +134,28 @@ export function registerAgent(name: string, agentInstance: any) {
         };
       }
       return origMethod;
-    }
+    },
   });
 }
 
 // -----------------------------
-// Event subscriptions helpers
+// EventBus subscription helper
 // -----------------------------
-export async function runAgentMethod(agentName: string, methodName: string, input?: any) {
+export async function subscribeToDBEvents(agentName: string) {
   const agent = agentManager[agentName];
-  if (!agent) throw new Error(`Agent not registered: ${agentName}`);
-  return await agent[methodName]?.(input);
+  if (!agent) return;
+
+  eventBus.subscribe("db:update", async (event) => {
+    if (typeof agent.handleDBUpdate === "function") {
+      await agent.handleDBUpdate(event);
+    }
+  });
+
+  eventBus.subscribe("db:delete", async (event) => {
+    if (typeof agent.handleDBDelete === "function") {
+      await agent.handleDBDelete(event);
+    }
+  });
 }
 
 // -----------------------------
@@ -171,13 +179,12 @@ registerAgent("DecisionAgent", new DecisionAgent());
 registerAgent("DeviceProtectionAgent", new DeviceProtectionAgent());
 registerAgent("DiscoveryAgent", new DiscoveryAgent());
 registerAgent("DistributedTaskAgent", new DistributedTaskAgent());
-registerAgent("DoctrineAgent", doctrine);
 registerAgent("EdgeDeviceAgent", new EdgeDeviceAgent());
 registerAgent("EvolutionAgent", new EvolutionAgent());
 registerAgent("FeedbackAgent", new FeedbackAgent());
 registerAgent("FounderAgent", new FounderAgent());
 registerAgent("GPUAgent", new GPUAgent());
-registerAgent("GlobalMedAgent", new GlobalMedAgent());
+registerAgent("GlobalMeshAgent", new GlobalMeshAgent());
 registerAgent("GoldEdgeIntegrationAgent", new GoldEdgeIntegrationAgent());
 registerAgent("HotReloadAgent", new HotReloadAgent());
 registerAgent("InspectionAgent", new InspectionAgent());
@@ -213,3 +220,8 @@ registerAgent("TranslationAgent", new TranslationAgent());
 registerAgent("ValidationAgent", new ValidationAgent());
 registerAgent("VerifierAgent", new VerifierAgent());
 registerAgent("WorkerAgent", new WorkerAgent());
+
+// -----------------------------
+// Subscribe all agents to DB events
+// -----------------------------
+Object.keys(agentManager).forEach(subscribeToDBEvents);
