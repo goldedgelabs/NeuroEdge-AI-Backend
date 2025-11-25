@@ -1,12 +1,11 @@
 // src/core/agentManager.ts
+import { DoctrineAgent } from "../agents/DoctrineAgent";
 import { db } from "../db/dbManager";
 import { eventBus } from "./eventBus";
-import { DoctrineAgent } from "../agents/DoctrineAgent";
 import { logger } from "../utils/logger";
 
-// Import all 63 agents
+// --- Import all 63 agents ---
 import { ARVAgent } from "../agents/ARVAgent";
-import { AgentBase } from "../agents/AgentBase";
 import { AnalyticsAgent } from "../agents/AnalyticsAgent";
 import { AntiTheftAgent } from "../agents/AntiTheftAgent";
 import { AutoUpdateAgent } from "../agents/AutoUpdateAgent";
@@ -23,7 +22,7 @@ import { DecisionAgent } from "../agents/DecisionAgent";
 import { DeviceProtectionAgent } from "../agents/DeviceProtectionAgent";
 import { DiscoveryAgent } from "../agents/DiscoveryAgent";
 import { DistributedTaskAgent } from "../agents/DistributedTaskAgent";
-import { DoctrineAgent as DoctrineAgentInstance } from "../agents/DoctrineAgent";
+import { DoctrineAgent } from "../agents/DoctrineAgent";
 import { EdgeDeviceAgent } from "../agents/EdgeDeviceAgent";
 import { EvolutionAgent } from "../agents/EvolutionAgent";
 import { FeedbackAgent } from "../agents/FeedbackAgent";
@@ -67,16 +66,10 @@ import { VerifierAgent } from "../agents/VerifierAgent";
 import { WorkerAgent } from "../agents/WorkerAgent";
 
 // -----------------------------
-// Agent Manager
-// -----------------------------
 export const agentManager: Record<string, any> = {};
 const doctrine = new DoctrineAgent();
-
-// Global reference
 (globalThis as any).__NE_AGENT_MANAGER = agentManager;
 
-// -----------------------------
-// Register agent with Doctrine + DB + EventBus + Self-healing
 // -----------------------------
 export function registerAgent(name: string, agentInstance: any) {
   agentManager[name] = new Proxy(agentInstance, {
@@ -88,7 +81,6 @@ export function registerAgent(name: string, agentInstance: any) {
           const folderArg = args[0]?.folder || "";
           const userRole = args[0]?.role || "user";
 
-          // Doctrine enforcement
           let doctrineResult = { success: true };
           if (doctrine && typeof doctrine.enforceAction === "function") {
             doctrineResult = await doctrine.enforceAction(action, folderArg, userRole);
@@ -101,7 +93,6 @@ export function registerAgent(name: string, agentInstance: any) {
           try {
             const result = await origMethod.apply(target, args);
 
-            // --- DB Integration ---
             if (result?.collection && result?.id) {
               await db.set(result.collection, result.id, result, "edge");
               eventBus.publish("db:update", { collection: result.collection, key: result.id, value: result, source: name });
@@ -110,9 +101,7 @@ export function registerAgent(name: string, agentInstance: any) {
 
             return result;
           } catch (err) {
-            if (typeof target.recover === "function") {
-              await target.recover(err);
-            }
+            if (typeof target.recover === "function") await target.recover(err);
             return { error: "Recovered from failure" };
           }
         };
@@ -123,31 +112,8 @@ export function registerAgent(name: string, agentInstance: any) {
 }
 
 // -----------------------------
-// Subscribe agents to DB events
-// -----------------------------
-export function wireDBSubscriptions(agentName: string) {
-  const agent = agentManager[agentName];
-  if (!agent) return;
-
-  eventBus.subscribe("db:update", async (event: any) => {
-    if (typeof agent.handleDBUpdate === "function") {
-      await agent.handleDBUpdate(event);
-    }
-  });
-
-  eventBus.subscribe("db:delete", async (event: any) => {
-    if (typeof agent.handleDBDelete === "function") {
-      await agent.handleDBDelete(event);
-    }
-  });
-}
-
-// -----------------------------
-// Register all 63 agents
-// -----------------------------
-const allAgents = [
+[
   ARVAgent,
-  AgentBase,
   AnalyticsAgent,
   AntiTheftAgent,
   AutoUpdateAgent,
@@ -164,7 +130,7 @@ const allAgents = [
   DeviceProtectionAgent,
   DiscoveryAgent,
   DistributedTaskAgent,
-  DoctrineAgentInstance,
+  DoctrineAgent,
   EdgeDeviceAgent,
   EvolutionAgent,
   FeedbackAgent,
@@ -205,14 +171,7 @@ const allAgents = [
   TranslationAgent,
   ValidationAgent,
   VerifierAgent,
-  WorkerAgent,
-];
+  WorkerAgent
+].forEach((AgentClass) => registerAgent(AgentClass.name, new AgentClass()));
 
-allAgents.forEach((AgentClass) => {
-  const instance = new AgentClass();
-  const name = instance.name || AgentClass.name;
-  registerAgent(name, instance);
-  wireDBSubscriptions(name);
-});
-
-logger.log(`[AgentManager] All 63 agents registered and DB-event wired.`);
+registerAgent("DoctrineAgent", doctrine);
