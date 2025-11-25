@@ -116,10 +116,18 @@ export function registerAgent(name: string, agentInstance: any) {
       return origMethod;
     },
   });
+
+  // Subscribe agent to DB events
+  eventBus.subscribe("db:update", async (data: any) => {
+    await agentManager[name]?.handleDBUpdate?.(data);
+  });
+  eventBus.subscribe("db:delete", async (data: any) => {
+    await agentManager[name]?.handleDBDelete?.(data);
+  });
 }
 
 // -----------------------------
-// Register all 63 agents
+// Register all agents
 [
   ARVAgent,
   AnalyticsAgent,
@@ -192,4 +200,4 @@ export async function replicateAllEdgeToShared() {
 
 export async function replicateCollectionToShared(collection: string) {
   return replicateEdgeToShared(collection);
-  }
+    }
