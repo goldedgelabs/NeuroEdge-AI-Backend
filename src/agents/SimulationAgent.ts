@@ -1,34 +1,41 @@
-// src/agents/SimulationAgent.ts
-import { logger } from "../utils/logger";
-import { engineManager, eventBus } from "../core/engineManager";
+import { AgentBase } from "./AgentBase";
+import { engineManager, agentManager, eventBus } from "../core/engineManager";
 
-export class SimulationAgent {
-  name = "SimulationAgent";
-
+export class SimulationAgent extends AgentBase {
   constructor() {
-    logger.info(`${this.name} initialized`);
+    super("SimulationAgent");
   }
 
-  // Run a simulation with a given scenario and parameters
-  async runSimulation(scenario: string, params: any) {
-    logger.log(`[SimulationAgent] Running simulation for scenario: ${scenario}`, params);
+  /**
+   * Runs simulations for testing various scenarios.
+   * Can simulate engine/agent workflows, edge cases, and system behaviors.
+   */
+  async run(input?: any) {
+    // Example input: { scenario?: string, parameters?: any }
+    const { scenario, parameters } = input || {};
+    console.log(`[SimulationAgent] Running simulation for scenario: ${scenario || "default"}`);
 
-    // Example: interact with a relevant engine
-    const predictiveEngine = engineManager["PredictiveEngine"];
-    let result = null;
-    if (predictiveEngine && typeof predictiveEngine.run === "function") {
-      result = await predictiveEngine.run({ scenario, params });
+    // Simulate interactions between engines and agents
+    const results: Record<string, any> = {};
+
+    if (scenario === "health") {
+      // Example: trigger HealthEngine → MedicineManagementAgent
+      if (engineManager["HealthEngine"]) {
+        results.healthEngine = await engineManager["HealthEngine"].run(parameters);
+      }
+    } else if (scenario === "security") {
+      if (agentManager["SelfProtectionAgent"]) {
+        results.securityCheck = await agentManager["SelfProtectionAgent"].run(parameters);
+      }
+    } else {
+      results.default = "Simulation ran with default settings.";
     }
 
-    // Notify subscribers about simulation completion
-    eventBus["simulation:complete"]?.forEach(cb => cb({ scenario, params, result }));
-
-    logger.info(`[SimulationAgent] Simulation completed: ${scenario}`);
-    return { success: true, result };
+    console.log(`[SimulationAgent] Results:`, results);
+    return results;
   }
 
-  // List available simulation scenarios (can be expanded dynamically)
-  getAvailableScenarios() {
-    return ["market", "environment", "health", "AI_behavior"];
+  async recover(err: any) {
+    console.error(`[SimulationAgent] Recovering from error:`, err);
   }
 }
