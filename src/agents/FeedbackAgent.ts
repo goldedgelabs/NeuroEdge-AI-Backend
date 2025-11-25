@@ -1,43 +1,49 @@
-// src/agents/FeedbackAgent.ts
-import { logger } from "../utils/logger";
-import { engineManager, eventBus } from "../core/engineManager";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class FeedbackAgent {
-  name = "FeedbackAgent";
-
-  constructor() {
-    logger.info(`${this.name} initialized`);
-  }
-
-  // Collect feedback from users or other agents
-  async collectFeedback(source: string, feedback: any) {
-    logger.log(`[FeedbackAgent] Collecting feedback from: ${source}`, feedback);
-
-    // Optionally process feedback through a relevant engine
-    const analyticsEngine = engineManager["AnalyticsEngine"];
-    let processed = null;
-    if (analyticsEngine && typeof analyticsEngine.run === "function") {
-      processed = await analyticsEngine.run({ source, feedback });
+/**
+ * FeedbackAgent
+ * ---------------------
+ * Collects, processes, and analyzes user feedback, system feedback,
+ * or inter-agent feedback to improve processes or guide decisions.
+ */
+export class FeedbackAgent extends AgentBase {
+    constructor() {
+        super("FeedbackAgent");
+        this.subscribeToEvents();
     }
 
-    // Emit feedback event
-    eventBus["feedback:received"]?.forEach(cb => cb({ source, feedback, processed }));
-
-    logger.info(`[FeedbackAgent] Feedback collected from ${source}`);
-    return { success: true, processed };
-  }
-
-  // Analyze feedback trends
-  async analyzeTrends(feedbackArray: any[]) {
-    logger.log(`[FeedbackAgent] Analyzing feedback trends`, feedbackArray);
-
-    const analyticsEngine = engineManager["AnalyticsEngine"];
-    let trend = null;
-    if (analyticsEngine && typeof analyticsEngine.run === "function") {
-      trend = await analyticsEngine.run({ action: "trendAnalysis", feedbackArray });
+    /**
+     * Subscribe to relevant feedback events
+     */
+    private subscribeToEvents() {
+        eventBus.subscribe("feedback:new", (data) => this.onNewFeedback(data));
+        eventBus.subscribe("feedback:resolve", (data) => this.onFeedbackResolve(data));
     }
 
-    logger.info(`[FeedbackAgent] Feedback trend analysis complete`);
-    return trend;
-  }
+    private onNewFeedback(data: any) {
+        console.log(`[FeedbackAgent] New feedback received:`, data);
+        // Process feedback, categorize, store or forward to relevant agents
+    }
+
+    private onFeedbackResolve(data: any) {
+        console.log(`[FeedbackAgent] Feedback resolved:`, data);
+        // Update feedback status, log metrics, or notify other systems
+    }
+
+    /**
+     * Run feedback analysis
+     */
+    async analyze(input: any) {
+        console.log(`[FeedbackAgent] Analyzing feedback:`, input);
+        // Placeholder: analyze sentiment, categorize, or prioritize
+        return { summary: "Analysis complete", insights: {} };
+    }
+
+    /**
+     * Recover from errors
+     */
+    async recover(err: any) {
+        console.warn(`[FeedbackAgent] Recovering from error`, err);
+    }
 }
