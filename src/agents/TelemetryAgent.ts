@@ -1,33 +1,31 @@
-// src/agents/TelemetryAgent.ts
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class TelemetryAgent {
-  name = "TelemetryAgent";
-
+export class TelemetryAgent extends AgentBase {
   constructor() {
-    logger.info(`${this.name} initialized`);
+    super("TelemetryAgent");
   }
 
-  // Send telemetry event
-  sendEvent(eventName: string, payload?: Record<string, any>) {
-    logger.log(`[${this.name}] Sending telemetry event: ${eventName}`, payload || {});
-    // Placeholder: could push to analytics backend or event bus
-    return { eventName, payload, timestamp: new Date().toISOString() };
+  /**
+   * Collects telemetry data from engines and agents.
+   * Can send logs, performance metrics, or usage statistics to event bus or DB.
+   */
+  async run(input?: any) {
+    const { source, metrics } = input || {};
+
+    if (!source || !metrics) {
+      return { error: "TelemetryAgent requires a source and metrics object." };
+    }
+
+    console.log(`[TelemetryAgent] Collecting telemetry from ${source}:`, metrics);
+
+    // Example: publish metrics to a central event bus for logging or storage
+    eventBus.publish("telemetry:data", { source, metrics, timestamp: new Date().toISOString() });
+
+    return { success: true, message: `Telemetry collected from ${source}` };
   }
 
-  // Collect system telemetry (placeholder)
-  collectSystemStats() {
-    const stats = {
-      cpu: Math.random().toFixed(2),
-      memory: (Math.random() * 100).toFixed(2),
-      uptime: process.uptime().toFixed(2),
-    };
-    logger.info(`[${this.name}] System stats collected:`, stats);
-    return stats;
-  }
-
-  // Recovery hook for resilience
   async recover(err: any) {
-    logger.error(`[${this.name}] Recovering from error:`, err);
+    console.error(`[TelemetryAgent] Error during telemetry collection:`, err);
   }
 }
