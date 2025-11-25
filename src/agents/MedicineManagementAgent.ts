@@ -1,36 +1,78 @@
-import { logger } from "../utils/logger";
-import { subscribe } from "../core/engineManager";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class MedicineManagementAgent {
-  name = "MedicineManagementAgent";
+/**
+ * MedicineManagementAgent
+ * ---------------------
+ * Handles medicine subscriptions, updates, and coordination
+ * with HealthEngine or other medicine-related engines.
+ */
+export class MedicineManagementAgent extends AgentBase {
+    private medicines: Record<string, any> = {};
 
-  constructor() {
-    logger.log(`[Agent Initialized] ${this.name}`);
-    // Subscribe to medicine updates
-    subscribe("db:update", this.handleDBUpdate.bind(this));
-  }
-
-  async handleDBUpdate({ collection, key, value, target }: any) {
-    if (collection === "medicine") {
-      logger.log(`[${this.name}] Medicine updated: ${key}`, value);
-      // Trigger agent-specific logic
-      await this.processMedicineUpdate(value);
+    constructor() {
+        super("MedicineManagementAgent");
+        this.subscribeToDBEvents();
     }
-  }
 
-  async processMedicineUpdate(medicine: any) {
-    // Example: Notify doctors, update predictive engine, log, etc.
-    logger.log(`[${this.name}] Processing medicine update:`, medicine);
-  }
+    /**
+     * Listen to DB events for medicine updates
+     */
+    private subscribeToDBEvents() {
+        eventBus.subscribe("db:update", (event) => this.handleDBUpdate(event));
+        eventBus.subscribe("db:delete", (event) => this.handleDBDelete(event));
+    }
 
-  async addMedicine(medicine: any) {
-    // Optional helper to add medicine and trigger DB update
-    // Example: db.set("medicine", medicine.id, medicine)
-    logger.log(`[${this.name}] Adding new medicine:`, medicine);
-  }
+    /**
+     * Handle medicine update
+     */
+    async handleDBUpdate(event: any) {
+        const { collection, key, value } = event;
+        if (collection !== "medicine") return;
+        this.medicines[key] = value;
+        console.log(`[MedicineManagementAgent] Medicine updated: ${key}`, value);
+        // Could trigger notifications or engine calls
+    }
 
-  async recover(err: any) {
-    logger.error(`[${this.name}] Recovered from error:`, err);
-    return { recovered: true };
-  }
-}
+    /**
+     * Handle medicine deletion
+     */
+    async handleDBDelete(event: any) {
+        const { collection, key } = event;
+        if (collection !== "medicine") return;
+        delete this.medicines[key];
+        console.log(`[MedicineManagementAgent] Medicine deleted: ${key}`);
+    }
+
+    /**
+     * Add or update medicine
+     */
+    async setMedicine(med: { id: string; name: string; dosage: string; manufacturer: string }) {
+        this.medicines[med.id] = med;
+        eventBus.publish("db:update", { collection: "medicine", key: med.id, value: med });
+        console.log(`[MedicineManagementAgent] Medicine saved: ${med.name}`);
+        return { success: true };
+    }
+
+    /**
+     * Retrieve medicine
+     */
+    async getMedicine(id: string) {
+        return this.medicines[id] || null;
+    }
+
+    /**
+     * Remove medicine
+     */
+    async removeMedicine(id: string) {
+        delete this.medicines[id];
+        eventBus.publish("db:delete", { collection: "medicine", key: id });
+        console.log(`[MedicineManagementAgent] Medicine removed: ${id}`);
+        return { success: true };
+    }
+
+    /**
+     * General run method
+     */
+    async run(input: any) {
+        console.log(`[MedicineManagementAgent
