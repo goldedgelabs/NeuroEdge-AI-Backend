@@ -1,53 +1,61 @@
-// src/agents/MonitoringAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class MonitoringAgent {
-  name = "MonitoringAgent";
-
-  constructor() {
-    logger.log(`${this.name} initialized`);
-  }
-
-  /**
-   * Collect system metrics from MonitoringEngine
-   * @param options Optional filtering or monitoring parameters
-   */
-  async collectMetrics(options?: any) {
-    const monitoringEngine = engineManager["MonitoringEngine"];
-    if (!monitoringEngine) {
-      logger.warn(`[${this.name}] MonitoringEngine not found`);
-      return { error: "MonitoringEngine not found" };
+/**
+ * MonitoringAgent
+ * ----------------
+ * Monitors system status, engine health, agent activity, and performance metrics.
+ */
+export class MonitoringAgent extends AgentBase {
+    constructor() {
+        super("MonitoringAgent");
+        this.subscribeToEvents();
     }
 
-    try {
-      const metrics = await monitoringEngine.run({ action: "collect", options });
-      logger.info(`[${this.name}] Metrics collected`);
-      return metrics;
-    } catch (err) {
-      logger.error(`[${this.name}] Metrics collection failed:`, err);
-      return { error: "Metrics collection failed", details: err };
-    }
-  }
-
-  /**
-   * Alert based on thresholds or anomalies
-   * @param alertData Data to trigger alerts
-   */
-  async alert(alertData: any) {
-    const monitoringEngine = engineManager["MonitoringEngine"];
-    if (!monitoringEngine) {
-      logger.warn(`[${this.name}] MonitoringEngine not found`);
-      return { error: "MonitoringEngine not found" };
+    /**
+     * Subscribe to important system events
+     */
+    private subscribeToEvents() {
+        eventBus.subscribe("engine:status", (event) => this.handleEngineStatus(event));
+        eventBus.subscribe("agent:status", (event) => this.handleAgentStatus(event));
     }
 
-    try {
-      const response = await monitoringEngine.run({ action: "alert", alertData });
-      logger.info(`[${this.name}] Alert executed`);
-      return response;
-    } catch (err) {
-      logger.error(`[${this.name}] Alert execution failed:`, err);
-      return { error: "Alert execution failed", details: err };
+    /**
+     * Handle engine status updates
+     */
+    async handleEngineStatus(event: any) {
+        const { engineName, status } = event;
+        console.log(`[MonitoringAgent] Engine ${engineName} status: ${status}`);
     }
-  }
+
+    /**
+     * Handle agent status updates
+     */
+    async handleAgentStatus(event: any) {
+        const { agentName, status } = event;
+        console.log(`[MonitoringAgent] Agent ${agentName} status: ${status}`);
+    }
+
+    /**
+     * Default run method
+     */
+    async run(input: any) {
+        console.log(`[MonitoringAgent] Run called with input:`, input);
+        return { success: true };
+    }
+
+    /**
+     * Recover from errors
+     */
+    async recover(err: any) {
+        console.warn(`[MonitoringAgent] Recovering from error`, err);
+    }
+
+    /**
+     * Send a system alert
+     */
+    async sendAlert(message: string) {
+        console.warn(`[MonitoringAgent] ALERT:`, message);
+        return { success: true };
+    }
 }
