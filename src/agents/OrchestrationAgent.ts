@@ -1,53 +1,19 @@
-// src/agents/OrchestrationAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class OrchestrationAgent {
-  name = "OrchestrationAgent";
-
+export class OrchestrationAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super("OrchestrationAgent");
   }
 
-  /**
-   * Coordinate multiple engines to complete a complex task
-   * @param tasks Array of engine-task objects
-   */
-  async coordinate(tasks: { engine: string; input: any }[]) {
-    const runChainInput = tasks.map(task => ({
-      engine: task.engine,
-      input: task.input,
-    }));
-
-    try {
-      const result = await engineManager["OrchestrationEngine"].run({
-        action: "coordinate",
-        payload: runChainInput,
-      });
-      logger.info(`[${this.name}] Orchestration completed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Orchestration failed:`, err);
-      return { error: "Failed to orchestrate tasks", details: err };
-    }
+  async run(input?: any) {
+    console.log(`[OrchestrationAgent] Running orchestration with input:`, input);
+    // Example: coordinate multiple agents or engines
+    eventBus.publish("orchestration:trigger", { input });
+    return { success: true };
   }
 
-  /**
-   * Execute a predefined workflow
-   * @param workflowName Name of the workflow
-   * @param data Input data for the workflow
-   */
-  async executeWorkflow(workflowName: string, data: any) {
-    try {
-      const result = await engineManager["OrchestrationEngine"].run({
-        action: "executeWorkflow",
-        payload: { workflowName, data },
-      });
-      logger.info(`[${this.name}] Workflow ${workflowName} executed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Workflow execution failed:`, err);
-      return { error: "Workflow execution failed", details: err };
-    }
+  async recover(err: any) {
+    console.error(`[OrchestrationAgent] Recovering from error:`, err);
   }
 }
