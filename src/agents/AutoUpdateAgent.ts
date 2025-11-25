@@ -1,51 +1,70 @@
-// src/agents/AutoUpdateAgent.ts
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/eventBus";
+import { db } from "../db/dbManager";
 
-export class AutoUpdateAgent {
-  name = "AutoUpdateAgent";
-  autoUpdateEnabled: boolean = true;
-
+export class AutoUpdateAgent extends AgentBase {
   constructor() {
-    logger.info(`${this.name} initialized`);
+    super({
+      id: "auto-update-agent",
+      name: "Auto Update Agent",
+      description: "Handles automatic updates and hot-reload for NeuroEdge engines and agents.",
+      type: "system"
+    });
   }
 
-  // Check for updates
-  async checkForUpdates() {
-    logger.log(`[AutoUpdateAgent] Checking for updates...`);
-    // Placeholder logic
-    const updatesAvailable = Math.random() > 0.5; // Simulate availability
-    logger.info(`[AutoUpdateAgent] Updates available: ${updatesAvailable}`);
-    return updatesAvailable;
-  }
+  /**
+   * Main handler
+   */
+  async handle(payload: any): Promise<any> {
+    const { action, data } = payload;
 
-  // Apply updates
-  async applyUpdates() {
-    if (!this.autoUpdateEnabled) {
-      logger.warn(`[AutoUpdateAgent] Auto-updates are disabled.`);
-      return { applied: false };
+    switch (action) {
+      case "check-updates":
+        return this.checkUpdates(data);
+
+      case "apply-update":
+        return this.applyUpdate(data);
+
+      default:
+        return { error: "Unknown action for AutoUpdateAgent" };
     }
-    const updatesAvailable = await this.checkForUpdates();
-    if (!updatesAvailable) return { applied: false };
-    
-    logger.log(`[AutoUpdateAgent] Applying updates...`);
-    // Placeholder: implement update mechanism here
-    return { applied: true };
   }
 
-  // Enable auto-update
-  enableAutoUpdate() {
-    this.autoUpdateEnabled = true;
-    logger.log(`[AutoUpdateAgent] Auto-update enabled`);
+  /**
+   * Check for available updates
+   */
+  async checkUpdates(info: any) {
+    // Logic to fetch update metadata from server
+    const updates = {
+      engines: ["SelfImprovementEngine", "PredictiveEngine"],
+      agents: ["AutoUpdateAgent", "SecurityAgent"],
+      version: "1.0.1",
+      available: true
+    };
+
+    return updates;
   }
 
-  // Disable auto-update
-  disableAutoUpdate() {
-    this.autoUpdateEnabled = false;
-    logger.log(`[AutoUpdateAgent] Auto-update disabled`);
+  /**
+   * Apply the update
+   */
+  async applyUpdate(updateInfo: any) {
+    // Logic to download and install updates
+    console.log(`[AutoUpdateAgent] Applying updates:`, updateInfo);
+
+    // Notify engines/agents of update
+    eventBus.publish("system:update", updateInfo);
+
+    return { success: true, applied: true };
   }
 
-  async recover(err: any) {
-    logger.warn(`[AutoUpdateAgent] Recovering from error:`, err);
-    return { recovered: true };
+  /**
+   * Initialize agent subscriptions
+   */
+  async init() {
+    eventBus.subscribe("system:update", async (data) => {
+      console.log(`[AutoUpdateAgent] Update event received:`, data);
+      // Optional: trigger hot-reload or additional logic
+    });
   }
 }
