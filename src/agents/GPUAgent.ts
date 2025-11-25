@@ -1,44 +1,47 @@
-// src/agents/GPUAgent.ts
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class GPUAgent {
-  name = "GPUAgent";
-  availableGPUs: string[] = [];
-
-  constructor() {
-    logger.info(`${this.name} initialized`);
-    this.detectGPUs();
-  }
-
-  // Detect available GPUs on system
-  detectGPUs() {
-    // Placeholder detection logic
-    this.availableGPUs = ["GPU0", "GPU1"];
-    logger.log(`[GPUAgent] Detected GPUs:`, this.availableGPUs);
-    return this.availableGPUs;
-  }
-
-  // Assign GPU for a task
-  async assignGPU(taskId: string) {
-    if (this.availableGPUs.length === 0) {
-      logger.warn(`[GPUAgent] No available GPU for task: ${taskId}`);
-      return { success: false, taskId, message: "No GPU available" };
+/**
+ * GPUAgent
+ * ---------------------
+ * Handles GPU acceleration tasks, heavy computation offloading,
+ * and scheduling tasks to GPU or edge devices.
+ */
+export class GPUAgent extends AgentBase {
+    constructor() {
+        super("GPUAgent");
+        this.subscribeToEvents();
     }
-    const gpu = this.availableGPUs.shift();
-    logger.log(`[GPUAgent] Assigned GPU ${gpu} to task ${taskId}`);
-    return { success: true, taskId, gpu };
-  }
 
-  // Release GPU after task
-  async releaseGPU(gpu: string) {
-    this.availableGPUs.push(gpu);
-    logger.log(`[GPUAgent] Released GPU ${gpu}`);
-    return { success: true, gpu };
-  }
+    /**
+     * Subscribe to key system events
+     */
+    private subscribeToEvents() {
+        eventBus.subscribe("compute:gpu", (data) => this.processTask(data));
+        eventBus.subscribe("task:heavy", (data) => this.processTask(data));
+    }
 
-  // Recovery hook
-  async recover(err: any) {
-    logger.warn(`[GPUAgent] Recovering from error:`, err);
-    return { recovered: true };
-  }
-  }
+    /**
+     * Process GPU-heavy tasks
+     */
+    async processTask(task: { taskId: string; payload: any }) {
+        console.log(`[GPUAgent] Processing GPU task: ${task.taskId}`);
+        // Here, implement task scheduling, GPU offload, or simulation
+        return { success: true, taskId: task.taskId };
+    }
+
+    /**
+     * General run method (optional)
+     */
+    async run(input: any) {
+        console.log(`[GPUAgent] Running with input:`, input);
+        return { status: "GPU task processed" };
+    }
+
+    /**
+     * Recover from errors
+     */
+    async recover(err: any) {
+        console.warn(`[GPUAgent] Recovering from error`, err);
+    }
+}
