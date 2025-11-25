@@ -1,29 +1,86 @@
-// src/agents/MetricsAgent.ts
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class MetricsAgent {
-  name = "MetricsAgent";
+/**
+ * MetricsAgent
+ * ------------
+ * Collects, processes, and stores system and application metrics.
+ */
+export class MetricsAgent extends AgentBase {
+    private metricsStore: Record<string, number> = {};
 
-  constructor() {
-    logger.info(`${this.name} initialized`);
-  }
+    constructor() {
+        super("MetricsAgent");
+        this.subscribeToDBEvents();
+    }
 
-  // Record a metric
-  recordMetric(name: string, value: number, tags?: Record<string, string>) {
-    logger.log(`[${this.name}] Recording metric: ${name} = ${value}`, tags || {});
-    // Placeholder: could push to a DB or in-memory store
-    return { name, value, tags, timestamp: new Date().toISOString() };
-  }
+    /**
+     * Subscribe to database or system events
+     */
+    private subscribeToDBEvents() {
+        eventBus.subscribe("db:update", (event) => this.handleDBUpdate(event));
+        eventBus.subscribe("db:delete", (event) => this.handleDBDelete(event));
+    }
 
-  // Retrieve metrics (simple placeholder)
-  getMetrics(filter?: { name?: string; tags?: Record<string, string> }) {
-    logger.log(`[${this.name}] Retrieving metrics`, filter || {});
-    // Placeholder: return empty array for now
-    return [];
-  }
+    /**
+     * Handle database updates
+     */
+    async handleDBUpdate(event: any) {
+        const { collection, key, value } = event;
+        if (collection !== "metrics") return;
+        this.metricsStore[key] = value;
+        console.log(`[MetricsAgent] Metric updated: ${key}`, value);
+    }
 
-  // Recovery hook for failures
-  async recover(err: any) {
-    logger.error(`[${this.name}] Recovering from error:`, err);
-  }
+    /**
+     * Handle database deletion
+     */
+    async handleDBDelete(event: any) {
+        const { collection, key } = event;
+        if (collection !== "metrics") return;
+        delete this.metricsStore[key];
+        console.log(`[MetricsAgent] Metric deleted: ${key}`);
+    }
+
+    /**
+     * Set a metric
+     */
+    async setMetric(key: string, value: number) {
+        this.metricsStore[key] = value;
+        eventBus.publish("db:update", { collection: "metrics", key, value });
+        console.log(`[MetricsAgent] Metric saved: ${key}`);
+        return { success: true };
+    }
+
+    /**
+     * Get a metric
+     */
+    async getMetric(key: string) {
+        return this.metricsStore[key] || 0;
+    }
+
+    /**
+     * Remove a metric
+     */
+    async removeMetric(key: string) {
+        delete this.metricsStore[key];
+        eventBus.publish("db:delete", { collection: "metrics", key });
+        console.log(`[MetricsAgent] Metric removed: ${key}`);
+        return { success: true };
+    }
+
+    /**
+     * Default run method
+     */
+    async run(input: any) {
+        console.log(`[MetricsAgent] Run called with input:`, input);
+        return { success: true };
+    }
+
+    /**
+     * Recover from errors
+     */
+    async recover(err: any) {
+        console.warn(`[MetricsAgent] Recovering from error`, err);
+    }
 }
