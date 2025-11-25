@@ -1,48 +1,32 @@
-// src/agents/SearchAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { agentManager, eventBus } from "../core/engineManager";
 
-export class SearchAgent {
-  name = "SearchAgent";
-
+export class SearchAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super("SearchAgent");
   }
 
   /**
-   * Perform a search across all connected engines or datasets
-   * @param query The search query
+   * Main method to handle search requests
+   * input example: { query: string, options?: any }
    */
-  async search(query: string) {
-    try {
-      const result = await engineManager["SearchEngine"].run({
-        action: "search",
-        payload: { query },
-      });
-      logger.info(`[${this.name}] Search completed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Search failed:`, err);
-      return { error: "Search failed", details: err };
+  async run(input?: any) {
+    if (!input) return { error: "No input provided" };
+    const { query, options } = input;
+
+    console.log(`[SearchAgent] Received query: ${query}`);
+
+    // Trigger SearchEngine if registered
+    const searchEngine = agentManager["SearchEngine"];
+    if (searchEngine && typeof searchEngine.run === "function") {
+      const result = await searchEngine.run({ query, options });
+      return { query, result };
     }
+
+    return { query, result: null, message: "SearchEngine not available" };
   }
 
-  /**
-   * Perform a filtered search with parameters
-   * @param query The search query
-   * @param filters Filters object (engine type, date, relevance, etc.)
-   */
-  async searchWithFilters(query: string, filters: Record<string, any>) {
-    try {
-      const result = await engineManager["SearchEngine"].run({
-        action: "searchWithFilters",
-        payload: { query, filters },
-      });
-      logger.info(`[${this.name}] Filtered search completed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Filtered search failed:`, err);
-      return { error: "Filtered search failed", details: err };
-    }
+  async recover(err: any) {
+    console.error(`[SearchAgent] Recovering from error:`, err);
   }
 }
