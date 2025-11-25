@@ -192,4 +192,4 @@ export async function replicateAllEdgeToShared() {
 
 export async function replicateCollectionToShared(collection: string) {
   return replicateEdgeToShared(collection);
-        }
+  }
