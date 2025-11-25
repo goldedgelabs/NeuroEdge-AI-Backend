@@ -1,52 +1,35 @@
 // src/db/dbManager.ts
-/**
- * NeuroEdge DB Manager
- * -------------------
- * Supports edge, shared, and global layers.
- * Offline-first, event-driven, replication ready.
- */
+type DBRecord = Record<string, any>;
 
-import { eventBus } from "../core/eventBus";
-import { logger } from "../utils/logger";
-
-// Simple in-memory DB for demonstration (can be replaced with IndexedDB / SQLite / Redis / etc.)
-const storage: Record<string, Record<string, any>> = {
-  edge: {},
-  shared: {},
-  global: {},
-};
+const edgeDB: Record<string, Record<string, any>> = {};
+const sharedDB: Record<string, Record<string, any>> = {};
 
 export const db = {
-  // Get single record
-  async get(collection: string, key: string, layer: "edge" | "shared" | "global" = "edge") {
-    return storage[layer]?.[collection]?.[key] ?? null;
+  async set(collection: string, key: string, value: any, target: "edge" | "shared" = "edge") {
+    const dbRef = target === "edge" ? edgeDB : sharedDB;
+    if (!dbRef[collection]) dbRef[collection] = {};
+    dbRef[collection][key] = value;
   },
 
-  // Set single record
-  async set(collection: string, key: string, value: any, layer: "edge" | "shared" | "global" = "edge") {
-    if (!storage[layer][collection]) storage[layer][collection] = {};
-    storage[layer][collection][key] = value;
-
-    // Emit update event
-    eventBus.publish("db:update", { collection, key, value, layer });
-
-    logger.log(`[DB] Set ${layer}.${collection}:${key}`);
-    return value;
+  async get(collection: string, key: string, target: "edge" | "shared" = "edge") {
+    const dbRef = target === "edge" ? edgeDB : sharedDB;
+    return dbRef[collection]?.[key] ?? null;
   },
 
-  // Delete record
-  async delete(collection: string, key: string, layer: "edge" | "shared" | "global" = "edge") {
-    if (storage[layer][collection]?.[key]) {
-      delete storage[layer][collection][key];
-      eventBus.publish("db:delete", { collection, key, layer });
-      logger.log(`[DB] Deleted ${layer}.${collection}:${key}`);
-      return true;
+  async getAll(collection: string, target: "edge" | "shared" = "edge") {
+    const dbRef = target === "edge" ? edgeDB : sharedDB;
+    return Object.values(dbRef[collection] || {});
+  },
+
+  async delete(collection: string, key: string, target: "edge" | "shared" = "edge") {
+    const dbRef = target === "edge" ? edgeDB : sharedDB;
+    if (dbRef[collection]) delete dbRef[collection][key];
+  },
+
+  async replicateEdgeToShared(collection: string) {
+    const records = await this.getAll(collection, "edge");
+    for (const rec of records) {
+      await this.set(collection, rec.id, rec, "shared");
     }
-    return false;
-  },
-
-  // Get all records in a collection
-  async getAll(collection: string, layer: "edge" | "shared" | "global" = "edge") {
-    return Object.values(storage[layer]?.[collection] ?? {});
-  },
+  }
 };
