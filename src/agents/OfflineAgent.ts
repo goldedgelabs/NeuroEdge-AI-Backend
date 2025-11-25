@@ -1,48 +1,37 @@
-// src/agents/OfflineAgent.ts
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class OfflineAgent {
-  name = "OfflineAgent";
-  offlineMode: boolean = false;
+export class OfflineAgent extends AgentBase {
+  private offlineQueue: any[] = [];
 
   constructor() {
-    logger.info(`${this.name} initialized`);
-    this.checkOfflineMode();
+    super("OfflineAgent");
   }
 
-  // Enable offline mode
-  enableOffline() {
-    this.offlineMode = true;
-    logger.log(`[OfflineAgent] Offline mode enabled`);
-  }
+  async run(input?: any) {
+    if (!input) return;
 
-  // Disable offline mode
-  disableOffline() {
-    this.offlineMode = false;
-    logger.log(`[OfflineAgent] Offline mode disabled`);
-  }
-
-  // Check system offline status
-  checkOfflineMode() {
-    // Placeholder logic: could check connectivity or cache availability
-    this.offlineMode = false; 
-    logger.log(`[OfflineAgent] Offline mode status:`, this.offlineMode);
-    return this.offlineMode;
-  }
-
-  // Execute a task offline
-  async runOfflineTask(task: any) {
-    if (!this.offlineMode) {
-      logger.warn(`[OfflineAgent] Cannot run task offline, offline mode is disabled.`);
-      return { success: false, task };
+    if (input.action === "queue") {
+      this.offlineQueue.push(input.data);
+      console.log(`[OfflineAgent] Queued data for offline sync:`, input.data);
+    } else if (input.action === "sync") {
+      await this.sync();
     }
-    logger.log(`[OfflineAgent] Running task offline:`, task);
-    // Simulate task execution
-    return { success: true, task };
+
+    return this.offlineQueue;
   }
 
   async recover(err: any) {
-    logger.warn(`[OfflineAgent] Recovering from error:`, err);
-    return { recovered: true };
+    console.error(`[OfflineAgent] Recovering from error:`, err);
+  }
+
+  private async sync() {
+    console.log(`[OfflineAgent] Syncing ${this.offlineQueue.length} items...`);
+    // Example: simulate replication to shared DB
+    for (const item of this.offlineQueue) {
+      eventBus.publish("db:update", item);
+    }
+    this.offlineQueue = [];
+    console.log(`[OfflineAgent] Sync complete.`);
   }
 }
