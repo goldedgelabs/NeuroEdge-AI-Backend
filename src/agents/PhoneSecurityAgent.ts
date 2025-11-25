@@ -1,28 +1,25 @@
-import { AgentBase } from "./AgentBase";
-import { eventBus } from "../core/engineManager";
+import { db } from "../db/dbManager";
+import { logger } from "../utils/logger";
 
-export class PhoneSecurityAgent extends AgentBase {
+export class PhoneSecurityAgent {
+  name = "PhoneSecurityAgent";
+
   constructor() {
-    super("PhoneSecurityAgent");
+    logger.log(`[Agent Initialized] ${this.name}`);
   }
 
-  async run(input?: any) {
-    console.log(`[PhoneSecurityAgent] Monitoring phone security with input:`, input);
-    // Example: detect theft, unauthorized access, suspicious activity
-    if (input?.threatDetected) {
-      console.warn(`[PhoneSecurityAgent] Threat detected:`, input.details);
-      eventBus.publish("phone:threat", input.details);
+  async handleDBUpdate(event: any) {
+    if (event.collection === "device_security") {
+      logger.info(`[PhoneSecurityAgent] Device event:`, event.key);
     }
-    return { success: true };
+  }
+
+  async addDeviceEvent(event: any) {
+    await db.set("device_security", event.id, event, "edge");
+    return event;
   }
 
   async recover(err: any) {
-    console.error(`[PhoneSecurityAgent] Recovering from error:`, err);
-  }
-
-  // Optional: helper to trigger phone lockdown
-  async lockDevice(deviceId: string) {
-    console.log(`[PhoneSecurityAgent] Locking device: ${deviceId}`);
-    return { locked: true };
+    logger.error(`[PhoneSecurityAgent] Recovered from error:`, err);
   }
 }
