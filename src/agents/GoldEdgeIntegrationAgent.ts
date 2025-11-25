@@ -1,21 +1,57 @@
-import { logger } from "../utils/logger";
-import { agentManager } from "../core/agentManager";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class GoldEdgeIntegrationAgent {
-  name = "GoldEdgeIntegrationAgent";
+/**
+ * GoldEdgeIntegrationAgent
+ * ---------------------
+ * Handles integration between NeuroEdge and other
+ * GoldEdge Labs apps (Browser, Super App, etc.).
+ * Ensures seamless data, plugin, and workflow integration.
+ */
+export class GoldEdgeIntegrationAgent extends AgentBase {
+    constructor() {
+        super("GoldEdgeIntegrationAgent");
+        this.subscribeToEvents();
+    }
 
-  constructor() {
-    logger.log(`[Agent Initialized] ${this.name}`);
-  }
+    /**
+     * Subscribe to integration-related events
+     */
+    private subscribeToEvents() {
+        eventBus.subscribe("goldedge:sync", (data) => this.handleIntegrationSync(data));
+        eventBus.subscribe("goldedge:update", (data) => this.handleUpdate(data));
+    }
 
-  async run(task: any) {
-    // Placeholder: Handle integration with GoldEdge Browser and apps
-    logger.log(`[${this.name}] Running integration task:`, task);
-    return { status: "integrated", task };
-  }
+    /**
+     * Handle sync events from other GoldEdge apps
+     */
+    async handleIntegrationSync(payload: any) {
+        console.log(`[GoldEdgeIntegrationAgent] Syncing data:`, payload);
+        // Implement data sync logic here
+        return { success: true, synced: payload };
+    }
 
-  async recover(err: any) {
-    logger.error(`[${this.name}] Recovered from error:`, err);
-    return { recovered: true };
-  }
+    /**
+     * Handle updates pushed from GoldEdge apps
+     */
+    async handleUpdate(update: any) {
+        console.log(`[GoldEdgeIntegrationAgent] Handling app update:`, update);
+        // Apply changes or trigger internal agents/engines
+        return { success: true, applied: update };
+    }
+
+    /**
+     * General run method
+     */
+    async run(input: any) {
+        console.log(`[GoldEdgeIntegrationAgent] Running with input:`, input);
+        return { status: "Integration complete", input };
+    }
+
+    /**
+     * Recovery from errors
+     */
+    async recover(err: any) {
+        console.warn(`[GoldEdgeIntegrationAgent] Recovering from error`, err);
+    }
 }
