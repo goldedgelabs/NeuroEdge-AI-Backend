@@ -13,7 +13,7 @@ import { engineManager, eventBus } from "./engineManager";
 import { agentManager } from "./agentManager";
 
 // -----------------------------
-// Helper to wire engine → agent events
+// Helper: wire single engine → multiple agents
 // -----------------------------
 function wireEngineToAgent(engineName: string, agentNames: string[], methodName: string = "run") {
   eventBus.subscribe(`engine:${engineName}`, async (payload: any) => {
@@ -27,6 +27,8 @@ function wireEngineToAgent(engineName: string, agentNames: string[], methodName:
         } catch (err) {
           if (typeof agent.recover === "function") {
             await agent.recover(err);
+          } else {
+            console.error(`[Connector] Agent ${agentName} failed:`, err);
           }
         }
       }
@@ -73,6 +75,8 @@ const wiringMap: Record<string, string[]> = {
 for (const [engineName, agentList] of Object.entries(wiringMap)) {
   wireEngineToAgent(engineName, agentList);
 }
+
+console.log("[Connector] Engine → Agent wiring complete");
 
 // -----------------------------
 // Optional: trigger engine events manually
