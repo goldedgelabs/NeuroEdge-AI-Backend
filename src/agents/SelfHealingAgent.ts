@@ -1,49 +1,57 @@
-// src/agents/SelfHealingAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { agentManager, engineManager, eventBus } from "../core/engineManager";
 
-export class SelfHealingAgent {
-  name = "SelfHealingAgent";
-
+export class SelfHealingAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super("SelfHealingAgent");
   }
 
-  // Trigger self-healing for a specific engine
-  async healEngine(engineName: string, error?: any) {
-    const engine = engineManager[engineName];
-    if (!engine) {
-      logger.warn(`[${this.name}] Engine not found: ${engineName}`);
-      return { error: "Engine not found" };
-    }
+  /**
+   * Monitors engines and agents and performs self-healing actions
+   * Example input: { target: "engine" | "agent", name?: string, issue?: string }
+   */
+  async run(input?: any) {
+    if (!input) return { error: "No input provided" };
+    const { target, name, issue } = input;
 
-    logger.info(`[${this.name}] Healing engine: ${engineName}`);
-    try {
-      if (typeof engine.recover === "function") {
-        await engine.recover(error);
-        logger.info(`[${this.name}] Engine ${engineName} healed successfully`);
-        return { success: true };
+    console.log(`[SelfHealingAgent] Running self-healing on ${target}${name ? ":" + name : ""}`);
+
+    let result = null;
+
+    if (target === "engine" && name) {
+      const engine = engineManager[name];
+      if (engine) {
+        // Example: re-initialize engine if it has a recover or init method
+        if (typeof engine.recover === "function") {
+          result = await engine.recover({ issue });
+        } else if (typeof engine.init === "function") {
+          result = await engine.init();
+        } else {
+          result = { status: "No recoverable method found" };
+        }
       } else {
-        logger.warn(`[${this.name}] Engine ${engineName} has no recover method`);
-        return { success: false, message: "No recover method" };
+        result = { error: "Engine not found" };
       }
-    } catch (err) {
-      logger.error(`[${this.name}] Failed to heal engine ${engineName}:`, err);
-      return { success: false, error: err };
     }
+
+    if (target === "agent" && name) {
+      const agent = agentManager[name];
+      if (agent) {
+        if (typeof agent.recover === "function") {
+          result = await agent.recover({ issue });
+        } else {
+          result = { status: "No recoverable method found" };
+        }
+      } else {
+        result = { error: "Agent not found" };
+      }
+    }
+
+    // Future: automatic monitoring of all engines/agents
+    return { target, name, issue, result };
   }
 
-  // Monitor engines and trigger healing automatically
-  async monitorAndHeal(engineName: string, data?: any) {
-    const engine = engineManager[engineName];
-    if (!engine) return { error: "Engine not found" };
-
-    try {
-      await engine.run(data || {});
-      return { status: "healthy" };
-    } catch (err) {
-      logger.warn(`[${this.name}] Detected failure in engine ${engineName}, initiating healing...`);
-      return await this.healEngine(engineName, err);
-    }
+  async recover(err: any) {
+    console.error(`[SelfHealingAgent] Recovering from error:`, err);
   }
-}
+                  }
