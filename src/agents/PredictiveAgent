@@ -1,0 +1,31 @@
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
+
+export class PredictiveAgent extends AgentBase {
+  constructor() {
+    super("PredictiveAgent");
+  }
+
+  async run(input?: any) {
+    console.log(`[PredictiveAgent] Running prediction with input:`, input);
+
+    // Example: make a simple prediction based on input data
+    const prediction = this.predict(input?.data || []);
+
+    // Publish event for other agents or engines
+    eventBus.publish("prediction:generated", prediction);
+
+    return prediction;
+  }
+
+  async recover(err: any) {
+    console.error(`[PredictiveAgent] Recovering from error:`, err);
+  }
+
+  private predict(data: any[]) {
+    // Placeholder: just return the last value as "prediction"
+    const prediction = data.length ? data[data.length - 1] : null;
+    console.log(`[PredictiveAgent] Prediction result:`, prediction);
+    return prediction;
+  }
+}
