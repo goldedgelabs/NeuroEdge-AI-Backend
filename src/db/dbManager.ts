@@ -2,91 +2,51 @@
 /**
  * NeuroEdge DB Manager
  * -------------------
- * Provides:
- * - Edge DB (local/offline)
- * - Shared DB (global sync)
- * - CRUD operations
- * - Event notifications
- * - Replication from Edge → Shared
+ * Supports edge, shared, and global layers.
+ * Offline-first, event-driven, replication ready.
  */
 
-import { eventBus } from "../core/neuroEdgeManager";
+import { eventBus } from "../core/eventBus";
+import { logger } from "../utils/logger";
 
-interface RecordType {
-  id: string;
-  [key: string]: any;
-}
-
-interface DBLayer {
-  [collection: string]: Record<string, RecordType>;
-}
-
-// Edge and Shared DB
-const edgeDB: DBLayer = {};
-const sharedDB: DBLayer = {};
-
-export const db = {
-  // ----------------- GET -----------------
-  async get(collection: string, id: string, layer: "edge" | "shared" = "edge") {
-    const dbLayer = layer === "edge" ? edgeDB : sharedDB;
-    return dbLayer[collection]?.[id] ?? null;
-  },
-
-  async getAll(collection: string, layer: "edge" | "shared" = "edge") {
-    const dbLayer = layer === "edge" ? edgeDB : sharedDB;
-    return Object.values(dbLayer[collection] || {});
-  },
-
-  // ----------------- SET -----------------
-  async set(collection: string, id: string, value: RecordType, layer: "edge" | "shared" = "edge") {
-    const dbLayer = layer === "edge" ? edgeDB : sharedDB;
-    if (!dbLayer[collection]) dbLayer[collection] = {};
-    dbLayer[collection][id] = value;
-
-    // Notify subscribers
-    eventBus.publish("db:update", { collection, key: id, value, target: layer });
-  },
-
-  // ----------------- DELETE -----------------
-  async delete(collection: string, id: string, layer: "edge" | "shared" = "edge") {
-    const dbLayer = layer === "edge" ? edgeDB : sharedDB;
-    if (dbLayer[collection]) {
-      delete dbLayer[collection][id];
-      eventBus.publish("db:delete", { collection, key: id, target: layer });
-    }
-  },
-
-  // ----------------- REPLICATION -----------------
-  async replicateEdgeToShared(collection: string) {
-    const edgeRecords = await db.getAll(collection, "edge");
-    for (const record of edgeRecords) {
-      await db.set(collection, record.id, record, "shared");
-    }
-  },
-
-  // Optional: periodic replication
-  startPeriodicReplication(intervalMs: number = 60000) {
-    setInterval(async () => {
-      for (const collection in edgeDB) {
-        await db.replicateEdgeToShared(collection);
-      }
-    }, intervalMs);
-  },
+// Simple in-memory DB for demonstration (can be replaced with IndexedDB / SQLite / Redis / etc.)
+const storage: Record<string, Record<string, any>> = {
+  edge: {},
+  shared: {},
+  global: {},
 };
 
-// ================== DB Event Subscription ==================
-export function subscribeToDBUpdates(callback: (event: any) => void) {
-  eventBus.subscribe("db:update", callback);
-}
+export const db = {
+  // Get single record
+  async get(collection: string, key: string, layer: "edge" | "shared" | "global" = "edge") {
+    return storage[layer]?.[collection]?.[key] ?? null;
+  },
 
-export function subscribeToDBDeletes(callback: (event: any) => void) {
-  eventBus.subscribe("db:delete", callback);
-}
+  // Set single record
+  async set(collection: string, key: string, value: any, layer: "edge" | "shared" | "global" = "edge") {
+    if (!storage[layer][collection]) storage[layer][collection] = {};
+    storage[layer][collection][key] = value;
 
-// ================== Example Usage ==================
-// Engines or agents can subscribe like:
-// subscribeToDBUpdates(event => {
-//   if (event.collection === "medicine") {
-//     console.log("Medicine updated:", event.key, event.value);
-//   }
-// });
+    // Emit update event
+    eventBus.publish("db:update", { collection, key, value, layer });
+
+    logger.log(`[DB] Set ${layer}.${collection}:${key}`);
+    return value;
+  },
+
+  // Delete record
+  async delete(collection: string, key: string, layer: "edge" | "shared" | "global" = "edge") {
+    if (storage[layer][collection]?.[key]) {
+      delete storage[layer][collection][key];
+      eventBus.publish("db:delete", { collection, key, layer });
+      logger.log(`[DB] Deleted ${layer}.${collection}:${key}`);
+      return true;
+    }
+    return false;
+  },
+
+  // Get all records in a collection
+  async getAll(collection: string, layer: "edge" | "shared" | "global" = "edge") {
+    return Object.values(storage[layer]?.[collection] ?? {});
+  },
+};
