@@ -1,36 +1,29 @@
-// src/agents/SummarizationAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { engineManager, agentManager, eventBus } from "../core/engineManager";
 
-export class SummarizationAgent {
-  name = "SummarizationAgent";
-
+export class SummarizationAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super("SummarizationAgent");
   }
 
   /**
-   * Summarize given text
-   * @param text Text to summarize
-   * @param length Desired summary length or ratio
+   * Summarizes text, reports, or data provided by other engines or agents.
+   * Example: summarizing analytics results, conversation logs, research data.
    */
-  async summarize(text: string, length: number | "short" | "medium" | "long" = "medium") {
-    const summarizationEngine = engineManager["SummarizationEngine"];
-    if (!summarizationEngine) {
-      logger.warn(`[${this.name}] SummarizationEngine not found`);
-      return { error: "SummarizationEngine not found" };
+  async run(input?: any) {
+    const { text, source } = input || {};
+    if (!text) {
+      return { error: "No text provided for summarization." };
     }
 
-    try {
-      const result = await summarizationEngine.run({
-        action: "summarize",
-        payload: { text, length },
-      });
-      logger.info(`[${this.name}] Summarization completed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Summarization failed:`, err);
-      return { error: "Summarization failed", details: err };
-    }
+    // Simple placeholder summarization logic (replace with NLP engine later)
+    const summary = text.split(" ").slice(0, 20).join(" ") + (text.split(" ").length > 20 ? "..." : "");
+
+    console.log(`[SummarizationAgent] Summarized text from ${source || "unknown source"}`);
+    return { original: text, summary };
+  }
+
+  async recover(err: any) {
+    console.error(`[SummarizationAgent] Recovering from error:`, err);
   }
 }
