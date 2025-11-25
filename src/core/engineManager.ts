@@ -1,65 +1,46 @@
-// src/core/engineManager.ts
 /**
  * NeuroEdge Engine Manager
  * -----------------------
  * Central registry for all engines
- * Provides:
- *  - Doctrine enforcement
- *  - Self-healing
- *  - Inter-engine communication
- *  - runEngineChain helper
+ * - Doctrine enforcement
+ * - Self-healing
+ * - Inter-engine communication
+ * - EventBus integration
  */
 
 import { DoctrineEngine } from "../engines/DoctrineEngine/index";
 
-// Import all 42 engines (some may be stubs for future expansion)
-import { AgentsEngine } from "../engines/AgentsEngine/index";
-import { CodeEngine } from "../engines/CodeEngine/index";
-import { DataEngine } from "../engines/DataEngine/index";
-import { DataIngestEngine } from "../engines/DataIngestEngine/index";
-import { DecisionEngine } from "../engines/DecisionEngine/index";
-import { DeviceProtectionEngine } from "../engines/DeviceProtectionEngine/index";
-import { DoctrineEngine } from "../engines/DoctrineEngine/index";
-import { GamingCreativeEngine } from "../engines/GamingCreativeEngine/index";
-import { GoldEdgeIntegrationEngine } from "../engines/GoldEdgeIntegrationEngine/index";
-import { HealthEngine } from "../engines/HealthEngine/index";
-import { MarketEngine } from "../engines/MarketEngine/index";
-import { MedicineManagementEngine } from "../engines/MedicineManagementEngine/index";
-import { MemoryEngine } from "../engines/MemoryEngine/index";
-import { MonitoringEngine } from "../engines/MonitoringEngine/index";
-import { MultiModalEngine } from "../engines/MultiModalEngine/index";
-import { PersonaEngine } from "../engines/PersonaEngine/index";
-import { PhoneSecurityEngine } from "../engines/PhoneSecurityEngine/index";
-import { PlannerEngine } from "../engines/PlannerEngine/index";
-import { PolicyEngine } from "../engines/PolicyEngine/index";
-import { RealTimeRecommenderEngine } from "../engines/RealTimeRecommenderEngine/index";
-import { ReasoningEngine } from "../engines/ReasoningEngine/index";
-import { RecommendationEngine } from "../engines/RecommendationEngine/index";
-import { ResearchAnalyticsEngine } from "../engines/ResearchAnalyticsEngine/index";
-import { ResearchEngine } from "../engines/ResearchEngine/index";
-import { SchedulingEngine } from "../engines/SchedulingEngine/index";
-import { SecurityEngine } from "../engines/SecurityEngine/index";
+// Import all 25 engines (including new ones)
 import { SelfImprovementEngine } from "../engines/SelfImprovementEngine/index";
-import { SimulationEngine } from "../engines/SimulationEngine/index";
-import { SummarizationEngine } from "../engines/SummarizationEngine/index";
-import { VisionEngine } from "../engines/VisionEngine/index";
+import { PredictiveEngine } from "../engines/PredictiveEngine/index";
+import { CodeEngine } from "../engines/CodeEngine/index";
 import { VoiceEngine } from "../engines/VoiceEngine/index";
-import { WorkerEngine } from "../engines/WorkerEngine/index";
+import { VisionEngine } from "../engines/VisionEngine/index";
 import { ReinforcementEngine } from "../engines/ReinforcementEngine/index";
+import { DataIngestEngine } from "../engines/DataIngestEngine/index";
 import { AnalyticsEngine } from "../engines/AnalyticsEngine/index";
-import { PlannerHelperEngine } from "../engines/PlannerHelperEngine/index";
+import { PlannerEngine } from "../engines/PlannerEngine/index";
+import { MemoryEngine } from "../engines/MemoryEngine/index";
+import { ConversationEngine } from "../engines/ConversationEngine/index";
+import { SchedulingEngine } from "../engines/SchedulingEngine/index";
+import { RecommendationEngine } from "../engines/RecommendationEngine/index";
+import { SecurityEngine } from "../engines/SecurityEngine/index";
+import { MonitoringEngine } from "../engines/MonitoringEngine/index";
+import { TranslationEngine } from "../engines/TranslationEngine/index";
+import { SummarizationEngine } from "../engines/SummarizationEngine/index";
+import { PersonaEngine } from "../engines/PersonaEngine/index";
+import { CreativityEngine } from "../engines/CreativityEngine/index";
 import { OrchestrationEngine } from "../engines/OrchestrationEngine/index";
 import { SearchEngine } from "../engines/SearchEngine/index";
-import { TranslationEngine } from "../engines/TranslationEngine/index";
-import { ConversationEngine } from "../engines/ConversationEngine/index";
-import { SchedulingHelperEngine } from "../engines/SchedulingHelperEngine/index";
-import { SelfHealingEngine } from "../engines/SelfHealingEngine/index";
-import { TelemetryEngine } from "../engines/TelemetryEngine/index";
+import { MedicineManagementEngine } from "../engines/MedicineManagementEngine/index";
+import { PhoneSecurityEngine } from "../engines/PhoneSecurityEngine/index";
+import { GoldEdgeIntegrationEngine } from "../engines/GoldEdgeIntegrationEngine/index";
+import { HealthEngine } from "../engines/HealthEngine/index";
 
 export const engineManager: Record<string, any> = {};
 const doctrine = new DoctrineEngine();
 
-// Global reference for engines to access manager
+// Global reference to avoid circular imports
 (globalThis as any).__NE_ENGINE_MANAGER = engineManager;
 
 // -----------------------------
@@ -135,52 +116,38 @@ export async function runEngineChain(chain: { engine: string; input?: any }[]) {
 }
 
 // -----------------------------
-// Register all 42 engines
+// Register all 25 engines
 // -----------------------------
-[
-  AgentsEngine,
-  CodeEngine,
-  DataEngine,
-  DataIngestEngine,
-  DecisionEngine,
-  DeviceProtectionEngine,
-  DoctrineEngine,
-  GamingCreativeEngine,
-  GoldEdgeIntegrationEngine,
-  HealthEngine,
-  MarketEngine,
-  MedicineManagementEngine,
-  MemoryEngine,
-  MonitoringEngine,
-  MultiModalEngine,
-  PersonaEngine,
-  PhoneSecurityEngine,
-  PlannerEngine,
-  PolicyEngine,
-  RealTimeRecommenderEngine,
-  ReasoningEngine,
-  RecommendationEngine,
-  ResearchAnalyticsEngine,
-  ResearchEngine,
-  SchedulingEngine,
-  SecurityEngine,
+const engines = [
   SelfImprovementEngine,
-  SimulationEngine,
-  SummarizationEngine,
-  VisionEngine,
+  PredictiveEngine,
+  CodeEngine,
   VoiceEngine,
-  WorkerEngine,
+  VisionEngine,
   ReinforcementEngine,
+  DataIngestEngine,
   AnalyticsEngine,
-  PlannerHelperEngine,
+  PlannerEngine,
+  MemoryEngine,
+  ConversationEngine,
+  SchedulingEngine,
+  RecommendationEngine,
+  SecurityEngine,
+  MonitoringEngine,
+  TranslationEngine,
+  SummarizationEngine,
+  PersonaEngine,
+  CreativityEngine,
   OrchestrationEngine,
   SearchEngine,
-  TranslationEngine,
-  ConversationEngine,
-  SchedulingHelperEngine,
-  SelfHealingEngine,
-  TelemetryEngine
-].forEach((EngineClass: any) => {
-  const instanceName = EngineClass.name;
-  registerEngine(instanceName, new EngineClass());
+  MedicineManagementEngine,
+  PhoneSecurityEngine,
+  GoldEdgeIntegrationEngine,
+  HealthEngine
+];
+
+engines.forEach(EngineClass => {
+  registerEngine(EngineClass.name, new EngineClass());
 });
+
+registerEngine("DoctrineEngine", doctrine);
