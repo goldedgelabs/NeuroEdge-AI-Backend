@@ -1,53 +1,32 @@
-// src/agents/SecurityAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { agentManager, eventBus } from "../core/engineManager";
 
-export class SecurityAgent {
-  name = "SecurityAgent";
-
+export class SecurityAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super("SecurityAgent");
   }
 
   /**
-   * Monitor system for threats or suspicious activity
-   * @param context Object with system state or activity logs
+   * Main security check entry
+   * input example: { type: "audit" | "scan", target?: string }
    */
-  async monitor(context: any) {
-    const secEngine = engineManager["SecurityEngine"];
-    if (!secEngine) {
-      logger.warn(`[${this.name}] SecurityEngine not found`);
-      return { error: "SecurityEngine not found" };
+  async run(input?: any) {
+    if (!input) return { error: "No input provided" };
+    const { type, target } = input;
+
+    console.log(`[SecurityAgent] Performing security check: ${type} on ${target || "all"}`);
+
+    // Example: trigger SecurityEngine if registered
+    const securityEngine = agentManager["SecurityEngine"];
+    if (securityEngine && typeof securityEngine.run === "function") {
+      const result = await securityEngine.run({ type, target });
+      return { type, target, result };
     }
 
-    try {
-      const result = await secEngine.run({ action: "monitor", context });
-      logger.info(`[${this.name}] Security monitoring complete`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Monitoring failed:`, err);
-      return { error: "Monitoring failed", details: err };
-    }
+    return { type, target, result: null, message: "SecurityEngine not available" };
   }
 
-  /**
-   * Respond to detected threats
-   * @param threat Object with threat details
-   */
-  async respond(threat: any) {
-    const secEngine = engineManager["SecurityEngine"];
-    if (!secEngine) {
-      logger.warn(`[${this.name}] SecurityEngine not found`);
-      return { error: "SecurityEngine not found" };
-    }
-
-    try {
-      const response = await secEngine.run({ action: "respond", threat });
-      logger.info(`[${this.name}] Threat response executed`);
-      return response;
-    } catch (err) {
-      logger.error(`[${this.name}] Threat response failed:`, err);
-      return { error: "Threat response failed", details: err };
-    }
+  async recover(err: any) {
+    console.error(`[SecurityAgent] Recovering from error:`, err);
   }
 }
