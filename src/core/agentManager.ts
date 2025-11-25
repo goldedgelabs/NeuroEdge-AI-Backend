@@ -2,6 +2,7 @@
 import { db } from "../db/dbManager";
 import { eventBus } from "./eventBus";
 import { logger } from "../utils/logger";
+import { replicateEdgeToShared } from "../db/replicationManager";
 
 // --- Import all 63 agents ---
 import { ARVAgent } from "../agents/ARVAgent";
@@ -182,3 +183,13 @@ export function registerAgent(name: string, agentInstance: any) {
 
 // DoctrineAgent also registered
 registerAgent("DoctrineAgent", doctrine);
+
+// -----------------------------
+// Optional manual replication helpers
+export async function replicateAllEdgeToShared() {
+  return replicateEdgeToShared();
+}
+
+export async function replicateCollectionToShared(collection: string) {
+  return replicateEdgeToShared(collection);
+        }
