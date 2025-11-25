@@ -1,20 +1,51 @@
-// src/agents/AgentBase.ts
-export class AgentBase {
+export interface AgentConfig {
+  id: string;
   name: string;
+  description: string;
+  type: string;
+}
 
-  constructor(name: string) {
-    this.name = name;
+export abstract class AgentBase {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+
+  constructor(config: AgentConfig) {
+    this.id = config.id;
+    this.name = config.name;
+    this.description = config.description;
+    this.type = config.type;
   }
 
-  async handleDBUpdate(event: any) {
-    console.log(`[Agent:${this.name}] DB Update received`, event);
+  /**
+   * Every agent MUST implement a handle() method.
+   */
+  abstract handle(payload: any): Promise<any>;
+
+  /**
+   * Optional setup hook
+   */
+  async init(): Promise<void> {
+    return;
   }
 
-  async handleDBDelete(event: any) {
-    console.log(`[Agent:${this.name}] DB Delete received`, event);
+  /**
+   * Optional cleanup hook
+   */
+  async shutdown(): Promise<void> {
+    return;
   }
 
-  async recover(error: any) {
-    console.warn(`[Agent:${this.name}] Recovered from error:`, error);
+  /**
+   * Base metadata returned by all agents
+   */
+  getMetadata() {
+    return {
+      id: this.id,
+      name: this.name,
+      description: this.description,
+      type: this.type,
+    };
   }
 }
