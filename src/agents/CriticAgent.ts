@@ -1,58 +1,26 @@
-import { logger } from "../utils/logger";
-import { engineManager } from "../core/engineManager";
+import { AgentBase } from "./AgentBase";
+import { CriticEngine } from "../engines/CriticEngine";
 
-export class CriticAgent {
-  name = "CriticAgent";
+export class CriticAgent extends AgentBase {
+    private criticEngine: CriticEngine;
 
-  constructor() {
-    logger.info(`[CriticAgent] Initialized`);
-    // Optional: survival check
-    if (typeof (this as any).survivalCheck === "function") {
-      (this as any).survivalCheck();
+    constructor() {
+        super("CriticAgent");
+        this.criticEngine = new CriticEngine();
     }
-  }
 
-  // Core method: critique a task, plan, or output
-  async critique(input: any, context: any = {}) {
-    logger.log(`[CriticAgent] Critiquing input:`, input);
-
-    try {
-      // Example: consult PredictiveEngine for evaluation score
-      const prediction = await engineManager["PredictiveEngine"].run({ input, context });
-
-      // Example critique result
-      const critiqueResult = {
-        input,
-        prediction,
-        score: prediction?.score || Math.random(), // placeholder
-        feedback: "Review completed",
-        createdAt: new Date().toISOString(),
-      };
-
-      logger.info(`[CriticAgent] Critique completed successfully`);
-      return critiqueResult;
-    } catch (err) {
-      logger.error(`[CriticAgent] Error during critique:`, err);
-      if (typeof this.recover === "function") {
-        await this.recover(err);
-      }
-      return { error: "Recovered from failure" };
+    /**
+     * Provides structured critique, reviews, evaluations, or quality assessment
+     * of content, ideas, decisions, or outputs.
+     */
+    async critique(input: string): Promise<string> {
+        return await this.criticEngine.evaluate(input);
     }
-  }
 
-  // Optional recovery method
-  async recover(err: any) {
-    logger.warn(`[CriticAgent] Recovery triggered:`, err);
-    // Recovery logic here
-  }
-
-  // Inter-agent communication
-  async talkTo(agentName: string, method: string, payload: any) {
-    const agent = (globalThis as any).__NE_AGENT_MANAGER?.[agentName];
-    if (agent && typeof agent[method] === "function") {
-      return agent[method](payload);
+    /**
+     * Scores or rates the quality of any material.
+     */
+    async score(input: string): Promise<number> {
+        return await this.criticEngine.score(input);
     }
-    logger.warn(`[CriticAgent] Agent or method not found: ${agentName}.${method}`);
-    return null;
-  }
 }
