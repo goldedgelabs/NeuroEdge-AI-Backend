@@ -8,22 +8,27 @@ import * as path from "path";
 /**
  * InspectionAgent
  * ----------------
- * Automatically inspects the entire NeuroEdge system:
+ * Continuously inspects and watches the system:
  * - Engines folder
  * - Agents folder
- * - DB entries
- * - Event bus channels
- * Registers/unregisters dynamically
- * Detects new engines/agents and ensures everything is up-to-date.
+ * - DB collections
+ * - EventBus channels
+ * Auto-registers new engines/agents and handles updates/removals.
  */
 export class InspectionAgent extends AgentBase {
+    private enginesPath: string;
+    private agentsPath: string;
+
     constructor() {
         super("InspectionAgent");
+        this.enginesPath = path.resolve(__dirname, "../engines");
+        this.agentsPath = path.resolve(__dirname);
+
+        // Start real-time watchers
+        this.watchFolder(this.enginesPath, "engine");
+        this.watchFolder(this.agentsPath, "agent");
     }
 
-    /**
-     * Scan a folder recursively for engines or agents
-     */
     private scanFolder(folderPath: string): string[] {
         const items: string[] = [];
         const entries = fs.readdirSync(folderPath, { withFileTypes: true });
@@ -38,12 +43,8 @@ export class InspectionAgent extends AgentBase {
         return items;
     }
 
-    /**
-     * Register all engines dynamically
-     */
     async inspectEngines() {
-        const enginePath = path.resolve(__dirname, "../engines");
-        const engineFiles = this.scanFolder(enginePath);
+        const engineFiles = this.scanFolder(this.enginesPath);
         for (const file of engineFiles) {
             const engineName = path.basename(file, ".ts");
             if (!(engineName in engineManager)) {
@@ -60,12 +61,8 @@ export class InspectionAgent extends AgentBase {
         }
     }
 
-    /**
-     * Register all agents dynamically
-     */
     async inspectAgents() {
-        const agentPath = path.resolve(__dirname);
-        const agentFiles = this.scanFolder(agentPath);
+        const agentFiles = this.scanFolder(this.agentsPath);
         for (const file of agentFiles) {
             const agentName = path.basename(file, ".ts");
             if (!(agentName in agentManager) && agentName !== "AgentBase") {
@@ -82,40 +79,76 @@ export class InspectionAgent extends AgentBase {
         }
     }
 
-    /**
-     * Scan DB collections and report status
-     */
     async inspectDB() {
         const collections = await db.listCollections();
         console.log(`[InspectionAgent] DB Collections:`, collections);
     }
 
-    /**
-     * Scan event bus channels
-     */
     async inspectEventBus() {
         const channels = Object.keys(eventBus);
         console.log(`[InspectionAgent] EventBus Channels:`, channels);
     }
 
-    /**
-     * Main inspection routine
-     */
-    async run(input?: any) {
-        console.log(`[InspectionAgent] Starting system inspection...`);
+    private watchFolder(folderPath: string, type: "engine" | "agent") {
+        fs.watch(folderPath, { recursive: true }, async (eventType, filename) => {
+            if (!filename.endsWith(".ts")) return;
 
+            const fullPath = path.join(folderPath, filename);
+            const name = path.basename(filename, ".ts");
+
+            if (eventType === "rename") {
+                // File added or removed
+                if (fs.existsSync(fullPath)) {
+                    // Added
+                    try {
+                        const ModuleClass = (await import(fullPath))[name];
+                        if (ModuleClass) {
+                            if (type === "engine") registerEngine(name, new ModuleClass());
+                            else registerAgent(name, new ModuleClass());
+                            console.log(`[InspectionAgent] Auto-registered new ${type}: ${name}`);
+                        }
+                    } catch (err) {
+                        console.error(`[InspectionAgent] Failed to auto-register ${type} ${name}:`, err);
+                    }
+                } else {
+                    // Removed
+                    if (type === "engine" && engineManager[name]) {
+                        delete engineManager[name];
+                        console.log(`[InspectionAgent] Engine removed: ${name}`);
+                    } else if (type === "agent" && agentManager[name]) {
+                        delete agentManager[name];
+                        console.log(`[InspectionAgent] Agent removed: ${name}`);
+                    }
+                }
+            } else if (eventType === "change") {
+                // File changed → reload
+                try {
+                    delete require.cache[require.resolve(fullPath)];
+                    const ModuleClass = (await import(fullPath))[name];
+                    if (ModuleClass) {
+                        if (type === "engine") registerEngine(name, new ModuleClass());
+                        else registerAgent(name, new ModuleClass());
+                        console.log(`[InspectionAgent] Reloaded ${type}: ${name}`);
+                    }
+                } catch (err) {
+                    console.error(`[InspectionAgent] Failed to reload ${type} ${name}:`, err);
+                }
+            }
+        });
+
+        console.log(`[InspectionAgent] Watching ${type} folder: ${folderPath}`);
+    }
+
+    async run(input?: any) {
+        console.log(`[InspectionAgent] Starting inspection...`);
         await this.inspectEngines();
         await this.inspectAgents();
         await this.inspectDB();
         await this.inspectEventBus();
-
         console.log(`[InspectionAgent] Inspection complete.`);
         return { success: true };
     }
 
-    /**
-     * Recover from errors
-     */
     async recover(err: any) {
         console.error(`[InspectionAgent] Recovering from error`, err);
     }
