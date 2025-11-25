@@ -1,35 +1,40 @@
 // src/db/dbManager.ts
-type DBRecord = Record<string, any>;
+import { logger } from "../utils/logger";
 
-const edgeDB: Record<string, Record<string, any>> = {};
-const sharedDB: Record<string, Record<string, any>> = {};
+type StoreType = "edge" | "shared";
 
-export const db = {
-  async set(collection: string, key: string, value: any, target: "edge" | "shared" = "edge") {
-    const dbRef = target === "edge" ? edgeDB : sharedDB;
-    if (!dbRef[collection]) dbRef[collection] = {};
-    dbRef[collection][key] = value;
-  },
+interface RecordData {
+  id: string;
+  [key: string]: any;
+}
 
-  async get(collection: string, key: string, target: "edge" | "shared" = "edge") {
-    const dbRef = target === "edge" ? edgeDB : sharedDB;
-    return dbRef[collection]?.[key] ?? null;
-  },
+export class DBManager {
+  private db: Record<StoreType, Record<string, RecordData>> = {
+    edge: {},
+    shared: {},
+  };
 
-  async getAll(collection: string, target: "edge" | "shared" = "edge") {
-    const dbRef = target === "edge" ? edgeDB : sharedDB;
-    return Object.values(dbRef[collection] || {});
-  },
+  async set(collection: string, key: string, value: any, store: StoreType = "edge") {
+    if (!this.db[store][collection]) this.db[store][collection] = {};
+    this.db[store][collection][key] = value;
+    logger.log(`[DBManager] Set ${store}:${collection}:${key}`);
+    return value;
+  }
 
-  async delete(collection: string, key: string, target: "edge" | "shared" = "edge") {
-    const dbRef = target === "edge" ? edgeDB : sharedDB;
-    if (dbRef[collection]) delete dbRef[collection][key];
-  },
+  async get(collection: string, key: string, store: StoreType = "edge") {
+    return this.db[store][collection]?.[key] ?? null;
+  }
 
-  async replicateEdgeToShared(collection: string) {
-    const records = await this.getAll(collection, "edge");
-    for (const rec of records) {
-      await this.set(collection, rec.id, rec, "shared");
+  async getAll(collection: string, store: StoreType = "edge") {
+    return Object.values(this.db[store][collection] ?? {});
+  }
+
+  async delete(collection: string, key: string, store: StoreType = "edge") {
+    if (this.db[store][collection]?.[key]) {
+      delete this.db[store][collection][key];
+      logger.log(`[DBManager] Deleted ${store}:${collection}:${key}`);
     }
   }
-};
+}
+
+export const db = new DBManager();
