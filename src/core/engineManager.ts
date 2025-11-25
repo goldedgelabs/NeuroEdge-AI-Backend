@@ -1,8 +1,8 @@
 // src/core/engineManager.ts
-import { DoctrineEngine } from "../engines/DoctrineEngine";
 import { db } from "../db/dbManager";
 import { eventBus } from "./eventBus";
 import { logger } from "../utils/logger";
+import { DoctrineEngine } from "../engines/DoctrineEngine";
 
 // --- Import all 42 engines ---
 import { SelfImprovementEngine } from "../engines/SelfImprovementEngine";
@@ -74,7 +74,7 @@ export function registerEngine(name: string, engineInstance: any) {
           try {
             const result = await origMethod.apply(target, args);
 
-            // Auto DB write & event publish
+            // --- DB integration: auto write + emit db:update ---
             if (result?.collection && result?.id) {
               await db.set(result.collection, result.id, result, "edge");
               eventBus.publish("db:update", {
@@ -110,7 +110,7 @@ export async function runEngineChain(chain: { engine: string; input?: any }[]) {
 }
 
 // -----------------------------
-// Register all 42 engines
+// Register all engines
 // -----------------------------
 [
   SelfImprovementEngine,
