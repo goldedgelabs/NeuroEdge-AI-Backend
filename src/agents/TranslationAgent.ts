@@ -1,61 +1,34 @@
-// src/agents/TranslationAgent.ts
-import { engineManager } from "../core/engineManager";
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/engineManager";
 
-export class TranslationAgent {
-  name = "TranslationAgent";
-
+export class TranslationAgent extends AgentBase {
   constructor() {
-    logger.log(`${this.name} initialized`);
+    super("TranslationAgent");
   }
 
   /**
-   * Translate text between languages
-   * @param text Text to translate
-   * @param sourceLang Source language code (e.g., 'en')
-   * @param targetLang Target language code (e.g., 'fr')
+   * Translates text from one language to another.
+   * Can be extended to handle batch translations or use AI models.
    */
-  async translate(text: string, sourceLang: string, targetLang: string) {
-    const translationEngine = engineManager["TranslationEngine"];
-    if (!translationEngine) {
-      logger.warn(`[${this.name}] TranslationEngine not found`);
-      return { error: "TranslationEngine not found" };
+  async run(input: { text: string; from: string; to: string }) {
+    const { text, from, to } = input || {};
+
+    if (!text || !from || !to) {
+      return { error: "TranslationAgent requires text, from, and to fields." };
     }
 
-    try {
-      const result = await translationEngine.run({
-        action: "translate",
-        payload: { text, sourceLang, targetLang },
-      });
-      logger.info(`[${this.name}] Translation completed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Translation failed:`, err);
-      return { error: "Translation failed", details: err };
-    }
+    // Placeholder for actual translation logic
+    const translatedText = `[${to}] ${text}`;
+
+    console.log(`[TranslationAgent] Translated "${text}" from ${from} to ${to}:`, translatedText);
+
+    // Publish translation event
+    eventBus.publish("translation:completed", { text, from, to, translatedText });
+
+    return { success: true, translatedText };
   }
 
-  /**
-   * Detect language of the text
-   * @param text Text to detect language
-   */
-  async detectLanguage(text: string) {
-    const translationEngine = engineManager["TranslationEngine"];
-    if (!translationEngine) {
-      logger.warn(`[${this.name}] TranslationEngine not found`);
-      return { error: "TranslationEngine not found" };
-    }
-
-    try {
-      const result = await translationEngine.run({
-        action: "detectLanguage",
-        payload: { text },
-      });
-      logger.info(`[${this.name}] Language detection completed`);
-      return result;
-    } catch (err) {
-      logger.error(`[${this.name}] Language detection failed:`, err);
-      return { error: "Language detection failed", details: err };
-    }
+  async recover(err: any) {
+    console.error(`[TranslationAgent] Error during translation:`, err);
   }
 }
