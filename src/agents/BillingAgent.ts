@@ -1,51 +1,75 @@
-// src/agents/BillingAgent.ts
-import { logger } from "../utils/logger";
+import { AgentBase } from "./AgentBase";
+import { eventBus } from "../core/eventBus";
+import { db } from "../db/dbManager";
 
-interface BillingRecord {
-  userId: string;
-  amount: number;
-  timestamp: number;
-  description?: string;
-}
-
-export class BillingAgent {
-  name = "BillingAgent";
-  private records: BillingRecord[] = [];
-
+export class BillingAgent extends AgentBase {
   constructor() {
-    logger.info(`${this.name} initialized`);
+    super({
+      id: "billing-agent",
+      name: "Billing Agent",
+      description: "Handles billing, subscriptions, and payment processing within NeuroEdge.",
+      type: "system"
+    });
   }
 
-  // Add a billing record
-  addRecord(userId: string, amount: number, description?: string) {
-    const record: BillingRecord = {
-      userId,
-      amount,
-      timestamp: Date.now(),
-      description,
-    };
-    this.records.push(record);
-    logger.log(`[${this.name}] Record added for user: ${userId}`, record);
-    return { success: true, record };
+  /**
+   * Main handler for billing actions
+   */
+  async handle(payload: any): Promise<any> {
+    const { action, data } = payload;
+
+    switch (action) {
+      case "create-subscription":
+        return this.createSubscription(data);
+
+      case "cancel-subscription":
+        return this.cancelSubscription(data);
+
+      case "process-payment":
+        return this.processPayment(data);
+
+      default:
+        return { error: "Unknown action for BillingAgent" };
+    }
   }
 
-  // Get all billing records for a user
-  getUserRecords(userId: string) {
-    const userRecords = this.records.filter(r => r.userId === userId);
-    logger.info(`[${this.name}] Retrieved records for user: ${userId}`);
-    return userRecords;
+  /**
+   * Create a subscription record
+   */
+  async createSubscription(subscription: any) {
+    await db.set("subscriptions", subscription.id, subscription, "shared");
+    eventBus.publish("billing:created", subscription);
+    return { success: true, subscription };
   }
 
-  // Total billing for a user
-  getUserTotal(userId: string) {
-    const total = this.records
-      .filter(r => r.userId === userId)
-      .reduce((sum, r) => sum + r.amount, 0);
-    logger.info(`[${this.name}] Total billing for user ${userId}: ${total}`);
-    return total;
+  /**
+   * Cancel a subscription
+   */
+  async cancelSubscription(subscription: any) {
+    await db.delete("subscriptions", subscription.id, "shared");
+    eventBus.publish("billing:cancelled", subscription);
+    return { success: true };
   }
 
-  async recover(err: any) {
-    logger.error(`[${this.name}] Recovering from error:`, err);
+  /**
+   * Process a payment
+   */
+  async processPayment(payment: any) {
+    await db.set("payments", payment.id, payment, "shared");
+    eventBus.publish("billing:paid", payment);
+    return { success: true, payment };
+  }
+
+  /**
+   * Initialize agent subscriptions
+   */
+  async init() {
+    eventBus.subscribe("billing:created", async (subscription) => {
+      console.log(`[BillingAgent] Subscription created:`, subscription);
+    });
+
+    eventBus.subscribe("billing:paid", async (payment) => {
+      console.log(`[BillingAgent] Payment processed:`, payment);
+    });
   }
 }
